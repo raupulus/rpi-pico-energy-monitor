@@ -81,21 +81,21 @@ Sensibilidad:
 | 20A  | 100mV/A     |
 | 30A  | 66mV/A      |
 
-| Name | Pin           | Details |
-| ---- | ------------- | ------- |
-| VCC  | 5v/3.3v       |
-| GND  | GND           |
-| AO   | I1=27 y I2=26 |
+| Name | Pin           | Details    |
+| ---- | ------------- | ---------- |
+| VCC  | 5v/3.3v       | Power +    |
+| GND  | GND           | Ground -   |
+| AO   | I1=27 y I2=26 | Analog out |
 
 ### Voltage sensor one, type FZ0430
 
-| Name | Pin                                                                                | Details |
-| ---- | ---------------------------------------------------------------------------------- | ------- |
-| VCC  | 3,3V (Ejemplos con 5v, al ser divisor de tensión debería funcionar con 3,3v igual) |
-| GND  | GND                                                                                |
-| AO   | GPIO28                                                                             |
+| Name | Pin                                                                                | Details    |
+| ---- | ---------------------------------------------------------------------------------- | ---------- |
+| VCC  | 3,3V (Ejemplos con 5v, al ser divisor de tensión debería funcionar con 3,3v igual) |            |
+| GND  | GND                                                                                | Ground -   |
+| AO   | GPIO28                                                                             | Analog out |
 
-### Button fot power on display
+### Button for display power on
 
 | Name | Pin | Details                   |
 | ---- | --- | ------------------------- |
