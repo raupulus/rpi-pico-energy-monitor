@@ -33,7 +33,8 @@ class DisplayST7735_128x160():
         @param value: Valor de la estadística
         @param unity: Unidad de la estadística
         """
-        self.display._color = 0x07e0
+        #self.display._color = 0x07e0
+
         self.display.set_rotation(3)
 
         line_size = 10  # Altura dónde inicia cada línea
@@ -41,8 +42,18 @@ class DisplayST7735_128x160():
         y = line * line_size  # Posición de inicio
         x = 5
 
+        self.display._color = 0xF800
+        self.display.p_string(x, y, title)
+
+        self.display._color = 0x07e0
+        self.display.p_string(x + (len(title) * 6), y, str(value))
+
+        self.display._color = 0xFFE0
+        self.display.p_string(
+            x + ((len(title) + len(str(value))) * 6), y, ' ' + unity)
+
         # TODO: poner valor y unidad de medida en otro color
-        self.display.p_string(x, y, title + str(value) + unity)
+        #self.display.p_string(x, y, title + str(value) + unity)
 
     def printMessage(self, message):
         """
