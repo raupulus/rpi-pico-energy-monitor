@@ -1,3 +1,7 @@
+#!/usr/bin/env python
+# -*- coding: utf-8 -*-
+#
+
 from machine import Pin, ADC, SPI
 from time import sleep
 import utime
