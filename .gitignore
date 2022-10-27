@@ -135,6 +135,8 @@ dmypy.json
 
 # IDEs
 /.idea
+/.vscode
+.picowgo
 
 # Socket
 uds_socket
