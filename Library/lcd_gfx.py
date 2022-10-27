@@ -1,3 +1,6 @@
+#!/usr/bin/env python
+# -*- coding: utf-8 -*-
+#
 # http://forum.micropython.org/viewtopic.php?f=5&t=195&p=873&hilit=lcd_gfx#p873
 # adaptiert von Adafruit_GFX.cpp
 # for LCD and touch-sensor skin

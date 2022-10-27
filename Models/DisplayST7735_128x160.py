@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 #
-from machine import Pin, SPI
+
 from time import sleep
 from Library.ST7735 import ST7735
 #import Library.lcd_gfx
@@ -10,6 +10,10 @@ from Library.ST7735 import ST7735
 
 
 class DisplayST7735_128x160():
+    TIME_TO_OFF = 10  # Tiempo en minutos para apagar la pantalla
+
+    # Momento en el que se enciende la pantalla, para apagarla después de un tiempo
+    display_on_at = None
 
     def __init__(self, spi, rst=9, ce=13, dc=12, offset=0, c_mode='RGB'):
         self.display = ST7735(spi, rst, ce, dc, offset, c_mode)
@@ -18,6 +22,8 @@ class DisplayST7735_128x160():
         self.display.begin()
         self.display._bground = 0x0000
         self.display.fill_screen(self.display._bground)
+
+        # TODO: poner el tiempo de apagado de la pantalla en una variable y controlarla
 
     def printStat(self, line, title, value, unity):
         """
