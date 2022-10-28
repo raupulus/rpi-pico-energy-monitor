@@ -50,6 +50,7 @@ coverage.xml
 *.py,cover
 .hypothesis/
 .pytest_cache/
+/backup.py
 
 # Translations
 *.mo
@@ -145,3 +146,7 @@ keycounter.socket
 # DB
 keycounter.db
 keycounter.sqbpro
+
+# Systems
+
+.DS_Store
