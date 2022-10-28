@@ -6,6 +6,10 @@ from machine import Pin, ADC, SPI
 from time import sleep
 import utime
 from Models.DisplayST7735_128x160 import DisplayST7735_128x160
+from Models.Sensor_Voltage import Sensor_Voltage
+
+# Sensor de voltage
+SENSOR_VOLTAGE = Sensor_Voltage(28)
 
 cs = machine.Pin(13, machine.Pin.OUT)
 reset = machine.Pin(9, machine.Pin.OUT)
@@ -46,29 +50,6 @@ min_cpu_temp = 0
 avg_voltage = 0
 avg_intensity = 0
 avg_cpu_temp = 0
-
-
-def getVoltage(samples):
-    global max_voltage, min_voltage, avg_voltage
-    sum = 0
-
-    for read in range(samples):
-        reading = adc2.read_u16()  # Lectura del ADC a 16 bits
-        readingParse = ((reading - adc_voltage_correction)
-                        * adc_conversion_factor)
-
-        voltage = 5 * readingParse
-
-        sum += voltage
-
-        # Estadísticas
-        if voltage > max_voltage:
-            max_voltage = voltage
-        if voltage < min_voltage:
-            min_voltage = voltage
-        avg_voltage = (avg_voltage + voltage) / 2
-
-    return sum/samples
 
 
 def getRpiPicoTemp():
@@ -146,29 +127,37 @@ def getIntensity(samples, sensibility_5v=0.1):
 while True:
     setReadOn()
 
-    voltage = round(getVoltage(1), 4)
+    voltage = SENSOR_VOLTAGE.getStats(200)
     intensity = round(getIntensity(50, 0.1), 4)
     cpu_temp = round(getRpiPicoTemp(), 2)
 
-    display.printStat(1, 'Voltaje: ', round(voltage, 2), 'V')
-    display.printStat(2, 'Int: ', round(intensity, 2), 'A')
-    display.printStat(3, 'Cpu: ', round(cpu_temp, 2), 'C')
+    display.printStat(1, 'VCC/AVG: ', str(voltage.get('current')
+                                          ) + '/' + str(voltage.get('avg')), 'V')
 
-    display.printStat(4, '', '', '')
-    display.printStat(5, 'Voltaje AVG: ', round(avg_voltage, 2), 'V')
+    display.printStat(2, 'V.MIN/V.MAX: ', str(voltage.get('min')
+                                              ) + '/' + str(voltage.get('max')), 'V')
+
+    display.printStat(3, 'Int: ', round(intensity, 2), 'A')
+    display.printStat(4, 'Cpu: ', round(cpu_temp, 2), 'C')
+
+    display.printStat(5, '', '', '')
+    #display.printStat(5, 'Voltaje AVG: ', voltage.get('avg'), 'V')
     display.printStat(6, 'Intensidad AVG: ', round(avg_intensity, 2), 'A')
 
     display.printStat(7, '', '', '')
-    display.printStat(8, 'Voltaje Min.: ', round(min_voltage, 2), 'V')
-    display.printStat(9, 'Intensidad Min: ', round(min_intensity, 2), 'A')
-    display.printStat(10, 'Voltaje Max.: ', round(max_voltage, 2), 'V')
-    display.printStat(11, 'Intensidad Max: ', round(max_intensity, 2), 'A')
+    #display.printStat(8, 'Voltaje Min.: ', voltage.get('min'), 'V')
+    display.printStat(8, 'Intensidad Min: ', round(min_intensity, 2), 'A')
+    #display.printStat(10, 'Voltaje Max.: ', voltage.get('max'), 'V')
+    display.printStat(9, 'Intensidad Max: ', round(max_intensity, 2), 'A')
 
     print()
-    print('voltage: ' + str(voltage) + ' V')
+    print('voltage: ' + str(voltage.get('current')) + ' V')
     print('intensity: ' + str(intensity) + ' A')
     print('cpu_temp: ' + str(cpu_temp) + ' C')
     print()
+
+    # TODO: Después de cada subida a la API, resetear contador de estadísticas.
+    # SENSOR_VOLTAGE.resetStats()
 
     utime.sleep(0.5)
     setReadOff()
