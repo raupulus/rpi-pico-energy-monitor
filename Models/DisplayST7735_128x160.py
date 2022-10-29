@@ -1,19 +1,34 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 #
-
 from time import sleep
 from Library.ST7735 import ST7735
-#import Library.lcd_gfx
-
-# ST7735.ST7735_TFTHEIGHT = 160 # Establece la altura de la pantalla
 
 
 class DisplayST7735_128x160():
     TIME_TO_OFF = 10  # Tiempo en minutos para apagar la pantalla
 
-    # Momento en el que se enciende la pantalla, para apagarla después de un tiempo
+    # Momento en el que se enciende la pantalla, para apagarla después de un tiempo "TIME_TO_OFF"
     display_on_at = None
+
+    # TODO: dinamizar letras y añadir más
+    fonts = {
+        'small': {
+            'h': 7,  # Alto de la letra
+            'w': 5,  # Ancho de la letra
+            'font': 'font5x7.fnt'  # Fuente
+        },
+        'medium': {
+            'h': 7,
+            'w': 5,
+            'font': 'font5x7.fnt'
+        },
+        'big': {
+            'h': 7,
+            'w': 5,
+            'font': 'font5x7.fnt'
+        }
+    }
 
     def __init__(self, spi, rst=9, ce=13, dc=12, offset=0, c_mode='RGB'):
         self.display = ST7735(spi, rst, ce, dc, offset, c_mode)
@@ -23,17 +38,16 @@ class DisplayST7735_128x160():
         self.display._bground = 0x0000
         self.display.fill_screen(self.display._bground)
 
-        # TODO: poner el tiempo de apagado de la pantalla en una variable y controlarla
+        # ST7735.ST7735_TFTHEIGHT = 160 # Establece la altura de la pantalla
 
     def printStat(self, line, title, value, unity):
         """
-        Imprime estadísticas en la pantalla
-        @param line: Linea donde se imprime
-        @param title: Titulo de la estadística
+        Imprime las estadísticas por la pantalla
+        @param line: Línea donde se imprime
+        @param title: Título de la estadística
         @param value: Valor de la estadística
         @param unity: Unidad de la estadística
         """
-        #self.display._color = 0x07e0
 
         self.display.set_rotation(3)
 
@@ -42,32 +56,29 @@ class DisplayST7735_128x160():
         y = line * line_size  # Posición de inicio
         x = 5
 
+        # Limpio a partir del título
+        allLength = len(title) + len(str(value)) + len(unity)
+        self.display.draw_block(len(title) * 6, y, allLength - len(title),
+                                line_size, self.display._bground)
+
+        # Muestro título
         self.display._color = 0xF800
         self.display.p_string(x, y, title)
 
-        self.display._color = 0x07e0
+        # Muestro Valor
+        self.display._color = 0x07E0
         self.display.p_string(x + (len(title) * 6), y, str(value))
 
+        # Muestro unidad de medida
         self.display._color = 0xFFE0
         self.display.p_string(
-            x + ((len(title) + len(str(value))) * 6), y, ' ' + unity)
-
-        # TODO: poner valor y unidad de medida en otro color
-        #self.display.p_string(x, y, title + str(value) + unity)
+            x + ((len(title) * 6) + (len(str(value)) * 6)), y, ' ' + str(unity))
 
     def printMessage(self, message):
-        """
-        Dibuja un mensaje en la pantalla.
-        WIP
-        """
         pass
 
     def example(self):
-        """
-        Método para probar la pantalla y depurar problemas que puedan
-        encontrarse, esto solo es para pruebas y debug.
-        """
-        print('In display example')
+        print('in display example')
         self.display.reset()
         self.display.begin()
         self.display._bground = 0x0fff
