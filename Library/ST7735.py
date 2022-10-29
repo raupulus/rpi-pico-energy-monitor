@@ -3,9 +3,10 @@
 #
 #  ST7735.py
 #
-from machine import Pin, SPI
+from machine import Pin
 import time
 import math
+from Library.Lcd_Gfx import Lcd_Gfx
 
 # constants
 DELAY = 0x80
@@ -68,15 +69,8 @@ ST7735_MADCTL_BGR = 0x08
 ST7735_MADCTL_MH = 0x04
 
 
-class ST7735():
-
-    FONTS = [
-        'fonts/font5x7.fnt'
-    ]
-
-    font = FONTS[0]
-
-    def __init__(self, spi, rst=4, ce=5, dc=16, offset=0, c_mode='RGB', font=0):
+class ST7735(Lcd_Gfx):
+    def __init__(self, spi, rst=4, ce=5, dc=16, offset=0, c_mode='RGB'):
         self._rst = Pin(rst, Pin.OUT)   	# 4
         self._ce = Pin(ce, Pin.OUT)    		# 5
         self._ce.high()
@@ -89,16 +83,10 @@ class ST7735():
         self._height = ST7735_TFTHEIGHT
         self._color = 0
         self._bground = 0x64bd
-
         if c_mode == 'RGB':
             self._color_mode = ST7735_MADCTL_RGB
         else:
             self._color_mode = ST7735_MADCTL_BGR
-
-        if font < len(self.FONTS):
-            self.font = self.FONTS[font]
-        elif font > len(self.FONTS) or font < 0:
-            self.font = self.FONTS[0]
 
         # SPI
         self._spi = spi
@@ -278,7 +266,7 @@ class ST7735():
 
     def p_char(self, x, y, ch):
         fp = (ord(ch)-0x20) * 5
-        f = open(self.font, 'rb')
+        f = open('font5x7.fnt', 'rb')
         f.seek(fp)
         b = f.read(5)
         char_buf = bytearray(b)
