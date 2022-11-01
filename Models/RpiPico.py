@@ -1,5 +1,9 @@
 
 from machine import ADC, Pin
+import _thread
+import network
+import rp2
+from time import sleep
 
 
 class RpiPico():
@@ -12,7 +16,10 @@ class RpiPico():
     avg = 0
     current = 0
 
-    def __init__(self):
+    # Wireless
+    wifi = None
+
+    def __init__(self, ssid=None, password=None, country="ES"):
         self.TEMP_SENSOR = ADC(4)  # Sensor interno de raspberry pi pico.
 
         # Definición de GPIO
@@ -20,6 +27,13 @@ class RpiPico():
 
         # 16bits factor de conversión, aunque la lectura real en raspberry pi pico es de 12bits.
         self.adc_conversion_factor = self.adc_conversion_factor = self.voltage_working / 65535
+
+        print('Tiene ssid y pass:', ssid and password)
+
+        # Si recibe credenciales para conectar por wifi, se conecta al instanciar.
+        if ssid and password:
+            print('Comienza conexión a wireless')
+            self.wifiConnect(ssid, password, country)
 
     def resetStats(self):
         """Reset Statistics"""
@@ -71,13 +85,42 @@ class RpiPico():
             'current': round(float(self.current), 1)
         }
 
+    def secondThreadStartCallback(self, callback, params=()):
+        """
+        Inicializa un segundo hilo para ejecutar una función en paralelo sobre el microcontrolador.
+        """
+        _thread.start_new_thread(callback, params)
+
     def wifiStatus(self):
         """ Get wifi status"""
-        return "Not implemented"
+        return self.wifi.status()
 
-    def wifiConnect(self, ssid, password):
+    def wifiIsConnected(self):
+        """ Get wifi is connected """
+        return bool(self.wifi.isconnected() and self.wifi.status() == 3)
+
+    def wifiConnect(self, ssid, password, country="ES"):
         """ Connect to wifi"""
-        return "Not implemented"
+
+        # set your WiFi Country
+        rp2.country(country)
+
+        self.wifi = network.WLAN(network.STA_IF)
+        self.wifi.active(True)
+
+        # set power mode to get WiFi power-saving off (if needed)
+        # self.wifi.config(pm=0xa11140)
+
+        self.wifi.connect(ssid, password)
+
+        """
+        while !self.wifiIsConnected():
+            print("Waiting to connect:")
+
+            sleep(1)
+
+            print(self.wifi.ifconfig())
+        """
 
     def wifiDisconnect(self):
         """ Disconnect from wifi"""
