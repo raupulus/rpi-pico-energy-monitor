@@ -83,9 +83,6 @@ class DisplayST7735_128x160():
         height = self.display._height  # Altura dónde inicia cada línea
         width = self.display._width
 
-        print('DisplayST7735_128x160: cleanDisplay: height: ' + str(height))
-        print('DisplayST7735_128x160: cleanDisplay: width: ' + str(width))
-
         self.display.draw_block(0, 0, width, height, self.display._bground)
         sleep(0.2)
 
@@ -94,17 +91,11 @@ class DisplayST7735_128x160():
         Mientras la pantalla esté encendida, comprobar si se apaga cada 10 segundos
         """
 
-        print('DisplayST7735_128x160: loop')
-
         while True:
             diffSeconds = time() - self.display_on_at
             diffMinutes = diffSeconds / 60
 
-            print('DisplayST7735_128x160: loop: diffMinutes: ' + str(diffMinutes))
-
             if diffMinutes > self.TIME_TO_OFF:
-                print('Entro en apagar la pantalla')
-
                 self.display_on = False
 
                 sleep(0.2)
@@ -117,9 +108,6 @@ class DisplayST7735_128x160():
 
                 self.callbackDisplayOn()
             else:
-                print('No apago la pantalla. Tiempo restante: ',
-                      self.TIME_TO_OFF - diffMinutes)
-
                 sleep(10)
 
     def callbackDisplayOn(self):
