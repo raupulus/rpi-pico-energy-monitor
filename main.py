@@ -6,13 +6,30 @@ from Models.Sensor_Intensity import Sensor_Intensity
 from Models.Sensor_Voltage import Sensor_Voltage
 from Models.RpiPico import RpiPico
 
+# Importo variables de entorno
+import env
+
+
+# Cargo archivos de configuración desde .env sobreescribiendo variables locales.
+# load_dotenv(override=True)
+
+# Debug
+"""
+DEBUG = os.environ.get("DEBUG") == "True"
+UPLOAD_API = os.getenv("False", "UPLOAD_API") == "True"
+API_URL = os.getenv("False", "API_URL")
+API_TOKEN = os.getenv("", "API_TOKEN")
+AP_NAME = os.getenv("", "AP_NAME")
+AP_PASS = os.getenv("", "AP_PASS")
+"""
+
 voltage_working = 3.3
 
 # Corrección de voltaje al leer ADC, en rpi pico según datasheet es 0.706
 adc_voltage_correction = 0.706
 
 # Rpi Pico Model
-controller = RpiPico()
+controller = RpiPico(ssid=env.AP_NAME, password=env.AP_PASS)
 
 # Sensor de voltage
 SENSOR_VOLTAGE = Sensor_Voltage(
@@ -39,6 +56,10 @@ def setReadOn():
     TODO: Iniciar conexión al wifi, para que cargue mientras estamos leyendo datos.
     """
     controller.ledOn()
+
+    #print('Wifi ON:', controller.wifi.isconnected())
+    #print('Estado del wifi:', controller.wifiStatus())
+    #print('ifconfig', controller.wifi.ifconfig())
 
 
 def setReadOff():
@@ -83,6 +104,9 @@ while True:
     else:
         print()
         print('La pantalla está apagada, presiona el botón para encenderla.')
+
+    # TODO: if UPLOAD_API: conectar wifi, esperar wifi conectado, enviar datos a la API cada 1 minuto.
+    # TODO: PLANTEAR si tiene sentido: Separar flujo para el hilo que enciende la pantalla, cuando suba a la api salir del loop
 
     print()
     print('cpu_temp: ' + str(cpu.get('current')) + ' C')
