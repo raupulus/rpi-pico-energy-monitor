@@ -2,14 +2,14 @@
 # -*- coding: utf-8 -*-
 #
 from time import sleep
+from time import time
 from Library.ST7735 import ST7735
+from machine import Pin
+import _thread
 
 
 class DisplayST7735_128x160():
     TIME_TO_OFF = 10  # Tiempo en minutos para apagar la pantalla
-
-    # Momento en el que se enciende la pantalla, para apagarla después de un tiempo "TIME_TO_OFF"
-    display_on_at = None
 
     # TODO: dinamizar letras y añadir más
     fonts = {
@@ -30,15 +30,108 @@ class DisplayST7735_128x160():
         }
     }
 
-    def __init__(self, spi, rst=9, ce=13, dc=12, offset=0, c_mode='RGB'):
+    def __init__(self, spi, rst=9, ce=13, dc=12, offset=0, c_mode='RGB', btn_display_on=None):
         self.display = ST7735(spi, rst, ce, dc, offset, c_mode)
 
+        # Estado inicial de la pantalla
+        self.reset()
+
+        # Tiempo en el que se encendió la pantalla por primera vez
+        self.display_on_at = time()
+        self.display_on = True  # Indica si la pantalla está encendida o apagada
+
+        if (btn_display_on is not None):
+            sleep(1)
+            self.btn_display_on = Pin(btn_display_on, Pin.IN, Pin.PULL_DOWN)
+
+            sleep(0.5)
+
+            # Deja en un hilo independiente el control de la pantalla
+            _thread.start_new_thread(self.loop, ())
+
+        # ST7735.ST7735_TFTHEIGHT = 160 # Establece la altura de la pantalla
+
+    def reset(self):
+        """
+        Prepara el estado inicial de la pantalla.
+        """
+
         self.display.reset()
+
+        sleep(0.2)
+
         self.display.begin()
+
+        sleep(0.2)
+
+        self.display.set_rotation(3)
+
+        sleep(0.2)
+
         self.display._bground = 0x0000
         self.display.fill_screen(self.display._bground)
 
-        # ST7735.ST7735_TFTHEIGHT = 160 # Establece la altura de la pantalla
+        sleep(0.2)
+
+        self.cleanDisplay()
+
+    def cleanDisplay(self):
+        sleep(0.2)
+        self.display.fill_screen(self.display._bground)
+        sleep(0.2)
+
+        height = self.display._height  # Altura dónde inicia cada línea
+        width = self.display._width
+
+        print('DisplayST7735_128x160: cleanDisplay: height: ' + str(height))
+        print('DisplayST7735_128x160: cleanDisplay: width: ' + str(width))
+
+        self.display.draw_block(0, 0, width, height, self.display._bground)
+        sleep(0.2)
+
+    def loop(self):
+        """
+        Mientras la pantalla esté encendida, comprobar si se apaga cada 10 segundos
+        """
+
+        print('DisplayST7735_128x160: loop')
+
+        while True:
+            diffSeconds = time() - self.display_on_at
+            diffMinutes = diffSeconds / 60
+
+            print('DisplayST7735_128x160: loop: diffMinutes: ' + str(diffMinutes))
+
+            if diffMinutes > self.TIME_TO_OFF:
+                print('Entro en apagar la pantalla')
+
+                self.display_on = False
+
+                sleep(0.2)
+
+                self.reset()
+
+                sleep(1)
+
+                # TODO: Apagar la pantalla, LED de pantalla debería ser controlado por un GPIO
+
+                self.callbackDisplayOn()
+            else:
+                print('No apago la pantalla. Tiempo restante: ',
+                      self.TIME_TO_OFF - diffMinutes)
+
+                sleep(10)
+
+    def callbackDisplayOn(self):
+        """
+        Callback para encender la pantalla, se dispara al pulsar el botón de encendido
+        """
+        while True:
+            if self.btn_display_on.value() == 1:
+                self.reset()
+                self.display_on = True
+                self.display_on_at = time()
+                break
 
     def printStat(self, line, title, value, unity):
         """

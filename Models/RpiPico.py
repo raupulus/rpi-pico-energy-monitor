@@ -1,5 +1,6 @@
 
 from machine import ADC, Pin
+import _thread
 
 
 class RpiPico():
@@ -70,6 +71,12 @@ class RpiPico():
             'avg': round(float(self.avg), 1),
             'current': round(float(self.current), 1)
         }
+
+    def secondThreadStartCallback(self, callback, params=()):
+        """
+        Inicializa un segundo hilo para ejecutar una función en paralelo sobre el microcontrolador.
+        """
+        _thread.start_new_thread(callback, params)
 
     def wifiStatus(self):
         """ Get wifi status"""

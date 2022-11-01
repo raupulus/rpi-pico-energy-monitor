@@ -30,7 +30,7 @@ spi1 = SPI(1, baudrate=8000000, polarity=0, phase=0,
            firstbit=SPI.MSB, sck=Pin(10), mosi=Pin(11), miso=None)
 
 
-display = DisplayST7735_128x160(spi1, rst=9, ce=13, dc=12)
+display = DisplayST7735_128x160(spi1, rst=9, ce=13, dc=12, btn_display_on=8)
 
 
 def setReadOn():
@@ -58,28 +58,31 @@ while True:
     intensity1 = SENSOR_INTENSITY_1.getStats(500)
     intensity2 = SENSOR_INTENSITY_2.getStats(500)
 
-    display.printStat(1, 'CPU/MAX: ', str(cpu.get('current')
-                                          ) + '/' + str(cpu.get('max')), 'C')
+    if display.display_on:
+        display.printStat(1, 'CPU/MAX: ', str(cpu.get('current')
+                                              ) + '/' + str(cpu.get('max')), 'C')
 
-    display.printStat(
-        3, 'VCC/AVG: ', str(voltage.get('current')) + '/' + str(voltage.get('avg')), 'V')
+        display.printStat(
+            3, 'VCC/AVG: ', str(voltage.get('current')) + '/' + str(voltage.get('avg')), 'V')
 
-    display.printStat(
-        4, 'V.MIN/V.MAX: ', str(voltage.get('min')) + '/' + str(voltage.get('max')), 'V')
+        display.printStat(
+            4, 'V.MIN/V.MAX: ', str(voltage.get('min')) + '/' + str(voltage.get('max')), 'V')
 
-    display.printStat(
-        6, 'I1/AVG: ', str(intensity1.get('current')) + '/' + str(intensity1.get('avg')), 'A')
+        display.printStat(
+            6, 'I1/AVG: ', str(intensity1.get('current')) + '/' + str(intensity1.get('avg')), 'A')
 
-    display.printStat(
-        7, 'I1.MIN/I1.MAX: ', str(intensity1.get('min')) + '/' + str(intensity1.get('max')), 'A')
+        display.printStat(
+            7, 'I1.MIN/I1.MAX: ', str(intensity1.get('min')) + '/' + str(intensity1.get('max')), 'A')
 
-    display.printStat(
-        9, 'I2/AVG: ', str(intensity2.get('current')) + '/' + str(intensity2.get('avg')), 'A')
+        display.printStat(
+            9, 'I2/AVG: ', str(intensity2.get('current')) + '/' + str(intensity2.get('avg')), 'A')
 
-    display.printStat(
-        10, 'I2.MIN/I2.MAX: ', str(intensity2.get('min')) + '/' + str(intensity2.get('max')), 'A')
+        display.printStat(
+            10, 'I2.MIN/I2.MAX: ', str(intensity2.get('min')) + '/' + str(intensity2.get('max')), 'A')
 
-    display.printStat(8, '', '', '')
+    else:
+        print()
+        print('La pantalla está apagada, presiona el botón para encenderla.')
 
     print()
     print('cpu_temp: ' + str(cpu.get('current')) + ' C')
