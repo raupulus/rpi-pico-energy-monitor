@@ -1,43 +1,30 @@
 from machine import Pin, ADC, SPI
-from time import sleep
 import utime
 from Models.DisplayST7735_128x160 import DisplayST7735_128x160
 from Models.Sensor_Intensity import Sensor_Intensity
 from Models.Sensor_Voltage import Sensor_Voltage
 from Models.RpiPico import RpiPico
+from Models.ADS1115 import ADS1115
 
 # Importo variables de entorno
 import env
 
-
-# Cargo archivos de configuración desde .env sobreescribiendo variables locales.
-# load_dotenv(override=True)
-
-# Debug
-"""
-DEBUG = os.environ.get("DEBUG") == "True"
-UPLOAD_API = os.getenv("False", "UPLOAD_API") == "True"
-API_URL = os.getenv("False", "API_URL")
-API_TOKEN = os.getenv("", "API_TOKEN")
-AP_NAME = os.getenv("", "AP_NAME")
-AP_PASS = os.getenv("", "AP_PASS")
-"""
-
-voltage_working = 3.3
-
-# Corrección de voltaje al leer ADC, en rpi pico según datasheet es 0.706
-adc_voltage_correction = 0.706
-
 # Rpi Pico Model
-controller = RpiPico(ssid=env.AP_NAME, password=env.AP_PASS)
+controller = RpiPico(ssid=env.AP_NAME, password=env.AP_PASS, country="ES", )
+
+# ADS1115 Model (i2c to ADC)
+adcWrapper = ADS1115(11, 12, 0, 3.3)
 
 # Sensor de voltage
 SENSOR_VOLTAGE = Sensor_Voltage(
-    28, 0.5, voltage_working, adc_voltage_correction)
+    28, 0.5, controller.voltage_working, controller.adc_voltage_correction)
 
-# Sensores de intensidad
-SENSOR_INTENSITY_1 = Sensor_Intensity(27, 0.1, 0.20, voltage_working)
-SENSOR_INTENSITY_2 = Sensor_Intensity(26, 0.66, 0.20, voltage_working)
+#  Integrado en Rpi Pico
+SENSOR_INTENSITY_1 = Sensor_Intensity(controller, 'acs712', 27, 0.1, 0.20)
+SENSOR_INTENSITY_2 = Sensor_Intensity(controller, 'acs712', 26, 0.66, 0.20)
+
+#  Mediante ACS712 (Entiendo que los pines van de 0-3)
+#SENSOR_INTENSITY_3 = Sensor_Intensity(adcWrapper, 'MAX471', 0, 0.1, 0.05)
 
 # Pantalla principal 128x160px
 cs = Pin(13, Pin.OUT)
@@ -78,6 +65,7 @@ while True:
     voltage = SENSOR_VOLTAGE.getStats(50)
     intensity1 = SENSOR_INTENSITY_1.getStats(500)
     intensity2 = SENSOR_INTENSITY_2.getStats(500)
+    #intensity3 = SENSOR_INTENSITY_3.getStats(500)
 
     if display.display_on:
         display.printStat(1, 'CPU/MAX: ', str(cpu.get('current')
@@ -113,6 +101,7 @@ while True:
     print('voltage: ' + str(voltage.get('current')) + ' V')
     print('intensity1: ' + str(intensity1.get('current')) + ' A')
     print('intensity2: ' + str(intensity2.get('current')) + ' A')
+    #print('intensity3: ' + str(intensity3.get('current')) + ' A')
     #print('DEBUG I1: ' + str(SENSOR_INTENSITY_1.debug_max_voltage_on_disconnect))
     #print('DEBUG I2: ' + str(SENSOR_INTENSITY_2.debug_max_voltage_on_disconnect))
     print()

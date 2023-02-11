@@ -3,7 +3,7 @@ AP_NAME = ""
 AP_PASS = ""
 
 # Datos para la API
-API_URL = "http://example.com"
+API_URL = "http://localhost:8000/api/v1/"
 API_TOKEN = "apitoken"
 UPLOAD_API = False
 

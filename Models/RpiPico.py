@@ -28,7 +28,7 @@ class RpiPico():
         # 16bits factor de conversión, aunque la lectura real en raspberry pi pico es de 12bits.
         self.adc_conversion_factor = self.adc_conversion_factor = self.voltage_working / 65535
 
-        print('Tiene ssid y pass:', ssid and password)
+        #print('Tiene ssid y pass:', ssid and password)
 
         # Si recibe credenciales para conectar por wifi, se conecta al instanciar.
         if ssid and password:
@@ -137,3 +137,13 @@ class RpiPico():
     def bluetoothDisconnect(self):
         """ Disconnect from bluetooth"""
         return "Not implemented"
+
+    def readAnalogInput(self, pin):
+        """
+        Read analog value from pin
+        Lectura del ADC a 16 bits (12bits en raspberry pi pico, traducido a 16bits)
+        """
+
+        reading = ADC(pin).read_u16()
+
+        return (reading / 65535) * self.voltage_working
