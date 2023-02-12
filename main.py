@@ -10,10 +10,10 @@ from Models.ADS1115 import ADS1115
 import env
 
 # Rpi Pico Model
-controller = RpiPico(ssid=env.AP_NAME, password=env.AP_PASS, country="ES", )
+controller = RpiPico(ssid=env.AP_NAME, password=env.AP_PASS)
 
 # ADS1115 Model (i2c to ADC)
-adcWrapper = ADS1115(11, 12, 0, 3.3)
+adcWrapper = ADS1115(4, 5, 0.601, 3.3)
 
 # Sensor de voltage
 SENSOR_VOLTAGE = Sensor_Voltage(
@@ -24,7 +24,7 @@ SENSOR_INTENSITY_1 = Sensor_Intensity(controller, 'acs712', 27, 0.1, 0.20)
 SENSOR_INTENSITY_2 = Sensor_Intensity(controller, 'acs712', 26, 0.66, 0.20)
 
 #  Mediante ACS712 (Entiendo que los pines van de 0-3)
-#SENSOR_INTENSITY_3 = Sensor_Intensity(adcWrapper, 'MAX471', 0, 0.1, 0.05)
+SENSOR_INTENSITY_3 = Sensor_Intensity(adcWrapper, 'MAX471', 0, 0.1, 0.05)
 
 # Pantalla principal 128x160px
 cs = Pin(13, Pin.OUT)
@@ -65,7 +65,7 @@ while True:
     voltage = SENSOR_VOLTAGE.getStats(50)
     intensity1 = SENSOR_INTENSITY_1.getStats(500)
     intensity2 = SENSOR_INTENSITY_2.getStats(500)
-    #intensity3 = SENSOR_INTENSITY_3.getStats(500)
+    intensity3 = SENSOR_INTENSITY_3.getStats(5)
 
     if display.display_on:
         display.printStat(1, 'CPU/MAX: ', str(cpu.get('current')
@@ -89,6 +89,12 @@ while True:
         display.printStat(
             10, 'I2.MIN/I2.MAX: ', str(intensity2.get('min')) + '/' + str(intensity2.get('max')), 'A')
 
+        display.printStat(
+            12, 'I3/AVG: ', str(intensity3.get('current')) + '/' + str(intensity3.get('avg')), 'A')
+
+        display.printStat(
+            13, 'I3.MIN/I3.MAX: ', str(intensity3.get('min')) + '/' + str(intensity3.get('max')), 'A')
+
     else:
         print()
         print('La pantalla está apagada, presiona el botón para encenderla.')
@@ -101,7 +107,7 @@ while True:
     print('voltage: ' + str(voltage.get('current')) + ' V')
     print('intensity1: ' + str(intensity1.get('current')) + ' A')
     print('intensity2: ' + str(intensity2.get('current')) + ' A')
-    #print('intensity3: ' + str(intensity3.get('current')) + ' A')
+    print('intensity3: ' + str(intensity3.get('current')) + ' A')
     #print('DEBUG I1: ' + str(SENSOR_INTENSITY_1.debug_max_voltage_on_disconnect))
     #print('DEBUG I2: ' + str(SENSOR_INTENSITY_2.debug_max_voltage_on_disconnect))
     print()

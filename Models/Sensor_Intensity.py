@@ -1,5 +1,6 @@
 from machine import ADC
 from Models.Sensors.ACS712 import ACS712
+from Models.Sensors.Max471 import Max471
 from Models.ADS1115 import ADS1115
 
 
@@ -19,19 +20,14 @@ class Sensor_Intensity():
         @param voltage_working: Working voltage of the sensor
         """
         self.ORIGIN = origin
-        #self.adc_pin = adc_pin
-        #self.min_amperes = min_amperes
-        #self.sensibility = sensibility
 
-        #  TODO: Sensor de intensidad
         if sensor_type.upper() == 'ACS712':
             self.SENSOR = ACS712(adc_pin, sensibility,
                                  min_amperes, origin.voltage_working)
-        elif False:
-            self.SENSOR = ADS1115()
+        elif sensor_type.upper() == 'MAX471':
+            self.SENSOR = Max471(adc_pin)
 
-        # Esto sirve??? quizás mejor dentro de la clase que representa al sensor?
-        # self.resetStats()
+        self.resetStats()
 
     def resetStats(self):
         """Reset Statistics"""
