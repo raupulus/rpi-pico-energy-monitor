@@ -6,7 +6,7 @@ class Max471():
         self.adc_pin = adc_pin
 
     def readAnalogInput(self, value16bits):
-        print("value16bits: ", value16bits)
+        #print("value16bits: ", value16bits)
 
         if value16bits >= 3:
             return 0
@@ -16,6 +16,6 @@ class Max471():
 
         amperes = 3 - value16bits
 
-        print("amperes: ", amperes)
+        #print("amperes: ", amperes)
 
         return amperes

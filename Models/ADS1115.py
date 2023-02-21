@@ -1,20 +1,20 @@
 # Adaptador de i2c a ADC (analógico a digital) ADS1115
 from machine import I2C, Pin
+import time
 from Library.Ads1x15 import *
 
-
 class ADS1115():
-    adc_voltage_correction = 0.559
+    adc_voltage_correction = 0
     voltage_working = 3.3
 
-    def __init__(self, sda_pin, scl_pin, adc_voltage_correction=0.559, voltage_working=3.3, address=0x48):
+    def __init__(self, sda_pin, scl_pin, adc_voltage_correction=0.0, voltage_working=3.3, address=0x48):
         self.adc_voltage_correction = adc_voltage_correction
         self.voltage_working = voltage_working
 
         i2c = I2C(0, scl=Pin(scl_pin), sda=Pin(sda_pin))
 
         self.adc = ADS1115Lib(i2c, address)
-        self.adc.setVoltageRange_mV(ADS1115_RANGE_2048)
+        self.adc.setVoltageRange_mV(ADS1115_RANGE_4096)
         # self.adc.setCompareChannels(ADS1115_COMP_0_GND)
         self.adc.setMeasureMode(ADS1115_SINGLE)
 
@@ -23,6 +23,8 @@ class ADS1115():
         Read analog value from pin, Los valores válidos son 0-3
         Lectura del ADC a 16 bits, igual que micropython (rpi solo 12)
         """
+
+        #time.sleep_ms(120)
 
         if pin == 0:
             self.adc.setCompareChannels(ADS1115_COMP_0_GND)
@@ -37,16 +39,44 @@ class ADS1115():
 
         while self.adc.isBusy():
             pass
+            #time.sleep_ms(10)
 
         reading = self.adc.getResult_V()
 
-        print("reading: ", reading)
-        print("getVoltageRange_mV: ", self.adc.getVoltageRange_mV())
-        print("getRawResult: ", self.adc.getRawResult())
-        print("getResult_mV: ", self.adc.getResult_mV())
+        #print("reading: ", reading)
+        #print("getRawResult: ", self.adc.getRawResult())
+        # print("reading - adc_voltage_correction: ",
+        #      reading - self.adc_voltage_correction)
 
-        print("reading - adc_voltage_correction: ",
-              reading - self.adc_voltage_correction)
-        print("adc_voltage_correction: ", self.adc_voltage_correction)
+        # print("")
+
+        # 3.3v
+        # 1.49
+        # Tengo que devolver mayor a 1.65v
+        # 1.65v = 0amperes
+        # 0.185 = 1A
+        # El rango es de 0-2v
+        # 2v = 3.3v: 1.5v
+        # Sin carga: 0,7v
+        # Consumo de 1,65A devuelve 1,51v
+
+        # 3,3v - 1,51v = 1,79v
+        # 3,3v + 0,7v = 4v; 4v - 1,79v = 2,21v; 2,21 - 1,65 = 0,56v; 0,56v / 0,185 = 3A;
+        # 3v + 0,7 = 3,7v; 3,7v - 1,79v = 1,91v; 1,91v / 0,185 = 1,04A
+        # 3,3 + 0,7 = 4v; 4v - 1.65v = 2,35v; 2,35v / 0,185 = 3,2A
+        # 2v - 1,5v = 0,5v; (0,5v * 2v) / 3,3v = 0,33v; 0,33v / 0,185 = 1,78A
+
+        # 3.3v - 0.33v = 2.97v
+        # 2.97v - 1.65v = 1.32v
+        # 3.3v - 1.32v = 1.98v; 1.98v / 0.185 = 10.7A
+
+        # result = (reading - self.adc_voltage_correction) * \
+        #    self.voltage_working / 2
+
+        #result = 3 - (reading - self.adc_voltage_correction)
+
+        #print("result: ", result)
 
         return reading - self.adc_voltage_correction
+        # return 1.65 + ((2 - reading) * 2) / self.voltage_working
+        # return 3.3 - (2 - (reading - self.adc_voltage_correction))

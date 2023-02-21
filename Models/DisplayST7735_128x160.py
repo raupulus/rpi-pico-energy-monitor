@@ -5,7 +5,6 @@ from time import sleep
 from time import time
 from Library.ST7735 import ST7735
 from machine import Pin
-import _thread
 
 
 class DisplayST7735_128x160():
@@ -41,13 +40,9 @@ class DisplayST7735_128x160():
         self.display_on = True  # Indica si la pantalla está encendida o apagada
 
         if (btn_display_on is not None):
-            sleep(1)
             self.btn_display_on = Pin(btn_display_on, Pin.IN, Pin.PULL_DOWN)
 
-            sleep(0.5)
-
-            # Deja en un hilo independiente el control de la pantalla
-            _thread.start_new_thread(self.loop, ())
+            sleep(0.1)
 
         # ST7735.ST7735_TFTHEIGHT = 160 # Establece la altura de la pantalla
 
@@ -57,69 +52,44 @@ class DisplayST7735_128x160():
         """
 
         self.display.reset()
-
-        sleep(0.2)
-
         self.display.begin()
-
-        sleep(0.2)
-
         self.display.set_rotation(3)
-
-        sleep(0.2)
-
         self.display._bground = 0x0000
         self.display.fill_screen(self.display._bground)
-
-        sleep(0.2)
-
         self.cleanDisplay()
 
     def cleanDisplay(self):
-        sleep(0.2)
         self.display.fill_screen(self.display._bground)
-        sleep(0.2)
 
         height = self.display._height  # Altura dónde inicia cada línea
         width = self.display._width
 
         self.display.draw_block(0, 0, width, height, self.display._bground)
-        sleep(0.2)
 
     def loop(self):
         """
         Mientras la pantalla esté encendida, comprobar si se apaga cada 10 segundos
         """
 
-        while True:
-            diffSeconds = time() - self.display_on_at
-            diffMinutes = diffSeconds / 60
+        diffSeconds = time() - self.display_on_at
+        diffMinutes = diffSeconds / 60
 
-            if diffMinutes > self.TIME_TO_OFF:
-                self.display_on = False
+        if diffMinutes > self.TIME_TO_OFF:
+            self.display_on = False
+            self.reset()
 
-                sleep(0.2)
+            # TODO: Apagar la pantalla, LED de pantalla debería ser controlado por un GPIO
 
-                self.reset()
-
-                sleep(1)
-
-                # TODO: Apagar la pantalla, LED de pantalla debería ser controlado por un GPIO
-
-                self.callbackDisplayOn()
-            else:
-                sleep(10)
+            self.callbackDisplayOn()
 
     def callbackDisplayOn(self):
         """
         Callback para encender la pantalla, se dispara al pulsar el botón de encendido
         """
-        while True:
-            if self.btn_display_on.value() == 1:
-                self.reset()
-                self.display_on = True
-                self.display_on_at = time()
-                break
+        if self.btn_display_on.value() == 1:
+            self.reset()
+            self.display_on = True
+            self.display_on_at = time()
 
     def printStat(self, line, title, value, unity):
         """

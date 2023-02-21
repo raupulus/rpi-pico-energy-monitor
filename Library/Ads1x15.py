@@ -1,5 +1,4 @@
 from time import sleep_ms
-from machine import I2C
 
 __ADS1115_CONV_REG = 0x00  # Conversion Register
 __ADS1115_CONFIG_REG = 0x01  # Configuration Register

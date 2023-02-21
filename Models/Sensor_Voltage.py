@@ -2,6 +2,7 @@ from machine import ADC
 
 
 class Sensor_Voltage():
+    reads = 0 # Cantidad de lecturas realizadas desde el último reset
     max = 0
     min = 0
     avg = 0
@@ -26,8 +27,9 @@ class Sensor_Voltage():
         self.min = voltage
         self.avg = voltage
         self.current = voltage
+        self.reads = 0
 
-    def readVoltage(self):
+    def readSensor(self):
         """ Read sensor and return voltage"""
 
         # Lectura del ADC a 16 bits (12bits en raspberry pi pico, traducido a 16bits)
@@ -36,12 +38,26 @@ class Sensor_Voltage():
         readingParse = ((reading - self.adc_voltage_correction)
                         * self.adc_conversion_factor)
 
-        voltage = 5 * readingParse
+        value = 5 * readingParse
 
         if readingParse < self.min_voltage:
             return 0.00
 
-        return round(float(voltage), 2)
+
+        voltage = round(float(value), 2)
+        self.current = voltage
+
+        # Estadísticas
+        if voltage > self.max:
+            self.max_voltage = voltage
+        if voltage < self.min:
+            self.min = voltage
+
+        self.reads += 1
+
+        self.avg = round(float((self.avg + voltage) / self.reads), 2)
+
+        return value
 
     def getVoltage(self, samples=50):
         """
@@ -52,18 +68,9 @@ class Sensor_Voltage():
         sum = 0
 
         for read in range(samples):
-            voltage = self.readVoltage()
-
-            self.current = round(voltage, 2)
+            voltage = self.readSensor()
 
             sum += voltage
-
-            # Estadísticas
-            if voltage > self.max:
-                self.max_voltage = voltage
-            if voltage < self.min:
-                self.min = voltage
-            self.avg = round(float((self.avg + voltage) / 2), 2)
 
         return round(float(sum/samples), 2)
 
@@ -76,5 +83,6 @@ class Sensor_Voltage():
             'max': round(float(self.max), 2),
             'min': round(float(self.min), 2),
             'avg': round(float(self.avg), 2),
-            'current': round(float(self.current), 2)
+            'current': round(float(self.current), 2),
+            'reads': self.reads
         }

@@ -19,21 +19,29 @@ class RpiPico():
     # Wireless
     wifi = None
 
-    def __init__(self, ssid=None, password=None, country="ES"):
+    def __init__(self, ssid=None, password=None, debug=False, country="BO"):
+
+        self.DEBUG = debug
+
+        # Código de país para el Wireless
+        #rp2.country(country)
+
         self.TEMP_SENSOR = ADC(4)  # Sensor interno de raspberry pi pico.
 
         # Definición de GPIO
         self.LED_INTEGRATED = Pin("LED", Pin.OUT)
 
         # 16bits factor de conversión, aunque la lectura real en raspberry pi pico es de 12bits.
-        self.adc_conversion_factor = self.adc_conversion_factor = self.voltage_working / 65535
+        self.adc_conversion_factor = self.voltage_working / 65535
 
-        #print('Tiene ssid y pass:', ssid and password)
+        # print('Tiene ssid y pass:', ssid and password)
 
         # Si recibe credenciales para conectar por wifi, se conecta al instanciar.
-        if ssid and password:
-            print('Comienza conexión a wireless')
-            self.wifiConnect(ssid, password, country)
+        #if ssid and password:
+        #    print('Comienza conexión a wireless')
+            #self.wifiConnect(ssid, password)
+
+        self.resetStats()
 
     def resetStats(self):
         """Reset Statistics"""
@@ -47,14 +55,9 @@ class RpiPico():
         reading = (self.TEMP_SENSOR.read_u16() * self.adc_conversion_factor) - \
             self.adc_voltage_correction
 
-        value = self.INTEGRATED_TEMP_CORRECTION - reading / \
-            0.001721  # Formula given in RP2040 Datasheet
+        value = self.INTEGRATED_TEMP_CORRECTION - reading / 0.001721  # Formula given in RP2040 Datasheet
 
-        return round(float(value), 1)
-
-    def getTemp(self):
-        cpu_temp = self.readSensorTemp()
-
+        cpu_temp = round(float(value), 1)
         self.current = cpu_temp
 
         # Estadísticas
@@ -64,6 +67,11 @@ class RpiPico():
             self.min = cpu_temp
 
         self.avg_cpu_temp = round(float((self.avg + cpu_temp) / 2), 1)
+
+        return round(float(cpu_temp), 1)
+
+    def getTemp(self):
+        cpu_temp = self.readSensorTemp()
 
         return round(float(cpu_temp), 1)
 
@@ -97,34 +105,76 @@ class RpiPico():
 
     def wifiIsConnected(self):
         """ Get wifi is connected """
-        return bool(self.wifi.isconnected() and self.wifi.status() == 3)
+        return bool(self.wifi and self.wifi.isconnected and self.wifi.status() == 3)
 
-    def wifiConnect(self, ssid, password, country="ES"):
+    def wifiDebug(self):
+        print('Conectado a wifi:', self.wifiIsConnected())
+        print('Wifi Status:', self.wifiStatus())
+        print('Wifi IP:', self.wifi.ifconfig())
+        print('Canal: ', self.wifi.config('channel'))
+        print('ESSID: ', self.wifi.config('essid'))
+        print('TXPOWER:', self.wifi.config('txpower'))
+
+        import ubinascii
+        import network
+
+        mac = ubinascii.hexlify(network.WLAN().config('mac'), ':').decode()
+        print(mac)
+
+    def wifiConnect(self, ssid, password):
         """ Connect to wifi"""
-
-        # set your WiFi Country
-        rp2.country(country)
 
         self.wifi = network.WLAN(network.STA_IF)
         self.wifi.active(True)
 
-        # set power mode to get WiFi power-saving off (if needed)
-        # self.wifi.config(pm=0xa11140)
+        # Desactivo el ahorro de energía.
+        self.wifi.config(pm = 0xa11140)
+
+        #self.wifi.config(txpower=20, channel=2, ssid=ssid, security=4, password=password)
+        #self.wifi.config(txpower=20, ssid=ssid, security=2, password=password)
+
+        #self.wifi.config(txpower=20)
 
         self.wifi.connect(ssid, password)
 
-        """
-        while !self.wifiIsConnected():
-            print("Waiting to connect:")
+        sleep(1)
 
+        tryConnections = 3
+
+        while self.wifiIsConnected() == False and tryConnections > 0:
+            tryConnections -= 1
             sleep(1)
 
-            print(self.wifi.ifconfig())
-        """
+        if (self.DEBUG):
+            while self.wifiIsConnected() == False:
+                print('')
+                sleep(1)
+
+                print("Waiting to connect:")
+                self.wifiDebug()
+                print('SSID: ', ssid)
+
+                sleep(3)
+
+                print(self.wifi.scan())
+                sleep(3)
+
+
+            print('')
+            sleep(1)
+
+            print("Waiting to connect:")
+            self.wifiDebug()
+            print('SSID: ', ssid)
+
+            sleep(3)
+
+            print(self.wifi.scan())
+            sleep(3)
 
     def wifiDisconnect(self):
         """ Disconnect from wifi"""
-        return "Not implemented"
+        self.wifi.disconnect()
 
     def bluetoothStatus(self):
         """ Get bluetooth status"""
@@ -146,4 +196,20 @@ class RpiPico():
 
         reading = ADC(pin).read_u16()
 
-        return (reading / 65535) * self.voltage_working
+        #print("Lectura pin :" + str(pin))
+
+        #readingParse = ((reading - self.adc_voltage_correction)
+        #                * self.adc_conversion_factor)
+        #print("Lectura pin :" + str(pin),
+        #      (reading / 65535) * self.voltage_working)
+
+        #print("Lectura parseada: " + str(readingParse))
+
+        #print("raw: " + str(reading))
+        #print("adc_voltage_correction: " + str(self.adc_voltage_correction))
+
+        #print("voltaje: " + str(self.voltage_working -
+        #                        ((reading / 65535) * self.voltage_working)))
+
+        return self.voltage_working - ((reading / 65535) * self.voltage_working)
+        # return (reading / 65535) * self.voltage_working

@@ -2,14 +2,16 @@ from machine import ADC
 from Models.Sensors.ACS712 import ACS712
 from Models.Sensors.Max471 import Max471
 from Models.ADS1115 import ADS1115
-
+import time
 
 class Sensor_Intensity():
-
+    reads = 0 # Cantidad de lecturas realizadas desde el último reset
     min = 0
     max = 0
     avg = 0
     current = 0
+
+    block = False # Indica si está bloqueado para no realizar lecturas
 
     def __init__(self, origin, sensor_type, adc_pin=26, sensibility=0.1, min_amperes=0.15):
         """
@@ -36,14 +38,45 @@ class Sensor_Intensity():
         self.min = intensity
         self.avg = intensity
         self.current = intensity
+        self.reads = 0
 
     def readSensor(self):
         """ Read sensor and return amperes"""
+
+        while self.block:
+            time.sleep_ms(100)
+
+        ready = False
+
+        while not ready:
+            try:
+                read = self.ORIGIN.readAnalogInput(self.SENSOR.adc_pin)
+
+                value = self.SENSOR.readAnalogInput(read)
+                ready = True
+            except Exception as e:
+                print('Error de lectura, reintentando...', e)
+                time.sleep_ms(20)
         read = self.ORIGIN.readAnalogInput(self.SENSOR.adc_pin)
 
-        amperes = self.SENSOR.readAnalogInput(read)
+        value = self.SENSOR.readAnalogInput(read)
 
-        return round(float(amperes), 2)
+        amperes = round(float(value), 2)
+
+        self.current = amperes
+
+        # Estadísticas
+        if amperes > self.max:
+            self.max = amperes
+        if amperes < self.min:
+            self.min = amperes
+
+
+        self.reads += 1
+
+        self.avg = round(float((self.avg + amperes) / self.reads), 2)
+
+        return amperes
 
     def getIntensity(self, samples=50):
         """
@@ -56,27 +89,17 @@ class Sensor_Intensity():
         for read in range(samples):
             intensity = self.readSensor()
 
-            self.current = intensity
-
             sum += intensity
-
-            # Estadísticas
-            if intensity > self.max:
-                self.max = intensity
-            if intensity < self.min:
-                self.min = intensity
-            self.avg = round(float((self.avg + intensity) / 2), 2)
 
         return round(float(sum/samples), 2)
 
     def getStats(self, samples=50):
         """ Get Statistics formated as a dictionary"""
 
-        self.getIntensity(samples)
-
         return {
             'max': round(float(self.max), 2),
             'min': round(float(self.min), 2),
             'avg': round(float(self.avg), 2),
-            'current': round(float(self.current), 2)
+            'current': round(float(self.current), 2),
+            'reads': self.reads
         }
