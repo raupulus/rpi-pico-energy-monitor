@@ -15,6 +15,7 @@ class RpiPico():
     min = 0
     avg = 0
     current = 0
+    locked = False
 
     # Wireless
     wifi = None
@@ -22,6 +23,10 @@ class RpiPico():
     def __init__(self, ssid=None, password=None, debug=False, country="BO"):
 
         self.DEBUG = debug
+
+        self.SSID = ssid
+        self.PASSWORD = password
+        self.COUNTRY = country
 
         # Código de país para el Wireless
         #rp2.country(country)
@@ -37,21 +42,27 @@ class RpiPico():
         # print('Tiene ssid y pass:', ssid and password)
 
         # Si recibe credenciales para conectar por wifi, se conecta al instanciar.
-        #if ssid and password:
-        #    print('Comienza conexión a wireless')
-            #self.wifiConnect(ssid, password)
+        if ssid and password:
+            print('Comienza conexión a wireless')
+            self.wifiConnect(ssid, password)
 
+        # Realizo primera lectura de temperatura para inicializar variables y no comenzar a evaluar con 0 en estadísticas.
+        sleep(0.100)
         self.resetStats()
 
-    def resetStats(self):
+    def resetStats(self, temp=None):
         """Reset Statistics"""
-        temp = self.readSensorTemp()
+
+        temp = temp if temp else self.readSensorTemp()
         self.max = temp
         self.min = temp
         self.avg = temp
         self.current = temp
 
     def readSensorTemp(self):
+        if self.locked:
+            return self.current
+
         reading = (self.TEMP_SENSOR.read_u16() * self.adc_conversion_factor) - \
             self.adc_voltage_correction
 
@@ -83,8 +94,6 @@ class RpiPico():
 
     def getStats(self):
         """ Get Statistics formated as a dictionary"""
-
-        self.getTemp()
 
         return {
             'max': round(float(self.max), 1),
@@ -121,8 +130,13 @@ class RpiPico():
         mac = ubinascii.hexlify(network.WLAN().config('mac'), ':').decode()
         print(mac)
 
-    def wifiConnect(self, ssid, password):
+    def wifiConnect(self, ssid = None, password = None):
         """ Connect to wifi"""
+
+        if ssid is None and self.SSID is None and self.PASSWORD is None and password is None:
+            if self.DEBUG:
+                print('No se ha definido credenciales para conectar a wifi')
+            return False
 
         self.wifi = network.WLAN(network.STA_IF)
         self.wifi.active(True)
@@ -143,11 +157,19 @@ class RpiPico():
 
         while self.wifiIsConnected() == False and tryConnections > 0:
             tryConnections -= 1
-            sleep(1)
+
+            sleep(3)
+
+            self.wifi.connect(ssid, password)
 
         if (self.DEBUG):
             while self.wifiIsConnected() == False:
                 print('')
+
+                sleep(3)
+
+                self.wifi.connect(ssid, password)
+
                 sleep(1)
 
                 print("Waiting to connect:")
@@ -171,6 +193,8 @@ class RpiPico():
 
             print(self.wifi.scan())
             sleep(3)
+
+        return self.wifiIsConnected()
 
     def wifiDisconnect(self):
         """ Disconnect from wifi"""

@@ -1,9 +1,8 @@
 
-
 class Channels:
     def __init__(self, controller, adcWrapper, adcWrapper1, debug=False):
 
-        sensors = [
+        self.SENSORS = [
             {
                 'pos': 1,
                 'active': True,
@@ -95,8 +94,6 @@ class Channels:
                 'min_amperes': 0.15
             },
         ]
-
-        self.SENSORS = sensors
 
     def getSensors(self):
         return self.SENSORS

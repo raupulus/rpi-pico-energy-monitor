@@ -1,11 +1,11 @@
 # Adaptador de i2c a ADC (analógico a digital) ADS1115
 from machine import I2C, Pin
-import time
 from Library.Ads1x15 import *
 
 class ADS1115():
     adc_voltage_correction = 0
     voltage_working = 3.3
+    locked = False
 
     def __init__(self, sda_pin, scl_pin, adc_voltage_correction=0.0, voltage_working=3.3, address=0x48):
         self.adc_voltage_correction = adc_voltage_correction
@@ -24,24 +24,35 @@ class ADS1115():
         Lectura del ADC a 16 bits, igual que micropython (rpi solo 12)
         """
 
-        #time.sleep_ms(120)
+        if self.locked:
+            return None
 
-        if pin == 0:
-            self.adc.setCompareChannels(ADS1115_COMP_0_GND)
-        elif pin == 1:
-            self.adc.setCompareChannels(ADS1115_COMP_1_GND)
-        elif pin == 2:
-            self.adc.setCompareChannels(ADS1115_COMP_2_GND)
-        elif pin == 3:
-            self.adc.setCompareChannels(ADS1115_COMP_3_GND)
+        self.locked = True
 
-        self.adc.startSingleMeasurement()
+        reading = None
 
-        while self.adc.isBusy():
-            pass
-            #time.sleep_ms(10)
+        try:
+            if pin == 0:
+                self.adc.setCompareChannels(ADS1115_COMP_0_GND)
+            elif pin == 1:
+                self.adc.setCompareChannels(ADS1115_COMP_1_GND)
+            elif pin == 2:
+                self.adc.setCompareChannels(ADS1115_COMP_2_GND)
+            elif pin == 3:
+                self.adc.setCompareChannels(ADS1115_COMP_3_GND)
 
-        reading = self.adc.getResult_V()
+
+            self.adc.startSingleMeasurement()
+
+            while self.adc.isBusy():
+                pass
+
+            reading = self.adc.getResult_V()
+        except Exception as e:
+            print("Error: ", e)
+            reading = 0
+        finally:
+            self.locked = False
 
         #print("reading: ", reading)
         #print("getRawResult: ", self.adc.getRawResult())
@@ -77,6 +88,6 @@ class ADS1115():
 
         #print("result: ", result)
 
-        return reading - self.adc_voltage_correction
+        return reading - self.adc_voltage_correction if reading else None
         # return 1.65 + ((2 - reading) * 2) / self.voltage_working
         # return 3.3 - (2 - (reading - self.adc_voltage_correction))
