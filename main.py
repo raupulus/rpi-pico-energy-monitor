@@ -1,5 +1,9 @@
 from machine import Pin, SPI
-import time, _thread, gc
+#import _thread, gc
+import gc
+from time import sleep_ms
+from time import sleep
+from time import time
 from Models.DisplayST7735_128x160 import DisplayST7735_128x160
 from Models.Sensor_Intensity import Sensor_Intensity
 from Models.Sensor_Voltage import Sensor_Voltage
@@ -18,7 +22,10 @@ TIME_TO_UPLOAD = 10  # Cada cuantos segundos se suben los datos a la api
 TIME_TO_SHOW_DATA = 5  # Cada cuantos segundos se muestran los datos en la pantalla
 
 # Rpi Pico Model
-controller = RpiPico(ssid=env.AP_NAME, password=env.AP_PASS, debug=env.DEBUG)
+if env.UPLOAD_API:
+    controller = RpiPico(ssid=env.AP_NAME, password=env.AP_PASS, debug=env.DEBUG)
+else:
+    controller = RpiPico(debug=env.DEBUG)
 
 # Pantalla principal 128x160px
 cs = Pin(13, Pin.OUT)
@@ -28,24 +35,55 @@ spi1 = SPI(1, baudrate=8000000, polarity=0, phase=0,
            firstbit=SPI.MSB, sck=Pin(10), mosi=Pin(11), miso=None)
 
 
-display = DisplayST7735_128x160(spi1, rst=9, ce=13, dc=12, btn_display_on=8)
-
+display = DisplayST7735_128x160(spi1, rst=9, ce=13, dc=12, btn_display_on=8, orientation=env.DISPLAY_ORIENTATION, debug=env.DEBUG, timeout=env.DISPLAY_TIMEOUT)
 
 # ADS1115 Model (i2c to ADC)
 adcWrapper = ADS1115(4, 5, 0, 3.3)
-time.sleep_ms(120)
+sleep_ms(120)
 adcWrapper1 = ADS1115(4, 5, 0, 3.3, 0x49)
 
 # Sensor de voltage
 SENSOR_VOLTAGE = Sensor_Voltage(
     28, 0.5, controller.voltage_working, controller.adc_voltage_correction, debug=env.DEBUG)
 
+sleep_ms(200)
+
+## Crea base de la pantalla
+SENSOR_VOLTAGE.readSensor()
+sleep_ms(100)
+display.displayHeadInfo(wifi_status=controller.wifiStatus(), voltage=SENSOR_VOLTAGE.current)
+sleep_ms(display.DELAY)
+display.displayFooterInfo()
+sleep_ms(display.DELAY)
+display.tableCreate()
+sleep_ms(display.DELAY)
+display.tableAddValue(1, 3.21, 3.21, 3.21, 3.21)
+sleep_ms(display.DELAY)
+display.tableAddValue(2, 3.2, 3.2, 3.2, 3.2)
+sleep_ms(display.DELAY)
+display.tableAddValue(3, 3.2, 3.2, 3.2, 3.2)
+sleep_ms(display.DELAY)
+display.tableAddValue(4, 3.2, 3.2, 3.2, 3.2)
+sleep_ms(display.DELAY)
+display.tableAddValue(5, 3.2, 3.2, 3.2, 3.2)
+sleep_ms(display.DELAY)
+display.tableAddValue(6, 3.2, 3.2, 3.2, 3.2)
+sleep_ms(display.DELAY)
+display.tableAddValue(7, 3.2, 3.2, 3.2, 3.2)
+sleep_ms(display.DELAY)
+display.tableAddValue(8, 3.2, 3.2, 3.2, 3.2)
+sleep_ms(display.DELAY)
+display.tableAddValue(9, 3.2, 3.2, 3.2, 3.2)
+sleep_ms(display.DELAY)
+display.tableAddValue(10, 3.2, 3.2, 3.2, 3.2)
+gc.collect()
+
 channelSensors = []
 
 for channel in Channels(controller, adcWrapper, adcWrapper1, debug=env.DEBUG).getSensors():
     if channel.get('active'):
 
-        time.sleep_ms(120)
+        sleep_ms(120)
 
         channelSensors.append({
             'pos': channel.get('pos'),
@@ -63,16 +101,17 @@ for channel in Channels(controller, adcWrapper, adcWrapper1, debug=env.DEBUG).ge
 api = Api(controller, channelSensors, env.API_URL, env.API_PATH, env.API_TOKEN, debug=env.DEBUG)
 
 # Primeras lecturas de sensores integrados
-time.sleep(1)
+sleep(1)
 controller.readSensorTemp()
-time.sleep(1)
+sleep(1)
 SENSOR_VOLTAGE.readSensor()
-time.sleep_ms(100)
+sleep_ms(100)
 
 # Variables para el manejo de bloqueo con el segundo core
-thread_lock = _thread.allocate_lock()
-thread_lock_acquired = False
+#thread_lock = _thread.allocate_lock()
+#thread_lock_acquired = False
 
+gc.collect()
 
 def thread0():
     """
@@ -83,13 +122,13 @@ def thread0():
     counter = 0
 
     # Momento de la última subida a la api.
-    last_upload_at = time.time()
+    last_upload_at = time()
 
     # Momento de la última vez que se mostró por pantalla.
-    last_show_display_at = time.time()
+    last_show_display_at = time()
 
     while True:
-        time.sleep_ms(10)
+        sleep_ms(10)
 
         if env.DEBUG:
             print('.')
@@ -100,15 +139,15 @@ def thread0():
         if not controller.locked:
             controller.readSensorTemp()
 
-            time.sleep_ms(20)
+            sleep_ms(20)
 
             SENSOR_VOLTAGE.readSensor()
 
         # Almaceno si se ha pasado el tiempo para subir los datos a la api
-        need_upload = True if time.time() - last_upload_at >= TIME_TO_UPLOAD and env.UPLOAD_API else False
+        need_upload = True if time() - last_upload_at >= TIME_TO_UPLOAD and env.UPLOAD_API else False
 
         # Almaceno si se ha pasado el tiempo para mostrar los datos por pantalla
-        need_show_display = time.time() - last_show_display_at >= TIME_TO_SHOW_DATA
+        need_show_display = time() - last_show_display_at >= TIME_TO_SHOW_DATA
 
         # Aquí se almacenan los datos de los sensores de intensidad
         intensity = []
@@ -117,10 +156,10 @@ def thread0():
             sensor = channel.get('sensor')
 
             if sensor.controller.locked:
-                time.sleep_ms(20)
+                sleep_ms(20)
                 continue
 
-            time.sleep_ms(20)
+            sleep_ms(20)
             sensor.readSensor()
 
             # Solo almaceno los datos cuando se va a subir a la api o se va a mostrar por pantalla
@@ -159,15 +198,18 @@ def thread0():
 
         # Compruebo si ha pasado el tiempo para mostrar datos por pantalla
         if need_show_display and display and display.display_on:
-            last_show_display_at = time.time()
+            last_show_display_at = time()
 
-            global thread_lock
-            global thread_lock_acquired
+            #global thread_lock
+            #global thread_lock_acquired
 
             # Levanta un hilo independiente para mostrar los datos en la pantalla y subirlos a la api
-            if not thread_lock_acquired and read_data:
-                thread_lock_acquired = True
-                _thread.start_new_thread(thread1, (read_data,))
+            #if not thread_lock_acquired and read_data:
+                #thread_lock_acquired = True
+                #_thread.start_new_thread(thread1, (read_data.get('intensity'),))
+
+            if (read_data and len(read_data)):
+                thread1(read_data.get('intensity'), controller.wifiStatus(), read_data['voltage_current'])
 
         if need_upload and read_data and len(read_data):
             controller.locked = True
@@ -189,58 +231,35 @@ def thread0():
                 if env.DEBUG:
                     print('Error al subir api: ', e)
             finally:
-                time.sleep_ms(20)
+                sleep_ms(20)
 
-                last_upload_at = time.time()
+                last_upload_at = time()
                 controller.locked = False
                 controller.ledOff()
 
 
-def thread1(datas):
+def thread1(sensors, wifi_status, voltage):
     """
     Segundo hilo para acciones secundarias.
     """
-    global thread_lock
-    global thread_lock_acquired
+    #global thread_lock
+    #global thread_lock_acquired
 
-    thread_lock.acquire()
+    #thread_lock.acquire()
 
-    # TODO: Crear tabla para que puedan caber todos los datos en la pantalla a partir de recibir "datas"
-    time.sleep_ms(200)
+    display.displayHeadInfo(wifi_status, voltage)
+
+    for sensor in sensors:
+        print('')
+        print('')
+        print('ENTRA')
+
+        display.tableAddValue(sensor['pos'], sensor['current'], sensor['avg'], sensor['min'], sensor['max'])
 
     try:
-        display.printStat(1, 'CPU/MAX: ', str(controller.current) + '/' + str(controller.max), 'C')
-
-        display.printStat(
-            3, 'VCC/AVG: ', str(SENSOR_VOLTAGE.current) + '/' + str(SENSOR_VOLTAGE.avg), 'V')
-
-        display.printStat(
-            4, 'V.MIN/V.MAX: ', str(SENSOR_VOLTAGE.min) + '/' + str(SENSOR_VOLTAGE.max), 'V')
+        pass
 
 
-        i1 = channelSensors[0].get('sensor')
-        i2 = channelSensors[1].get('sensor')
-        i3 = channelSensors[2].get('sensor')
-
-        time.sleep_ms(100)
-
-        display.printStat(
-            6, 'I1/AVG: ', str(i1.current) + '/' + str(i1.avg), 'A')
-
-        display.printStat(
-            7, 'I1.MIN/I1.MAX: ', str(i1.min) + '/' + str(i1.max), 'A')
-
-        display.printStat(
-            9, 'I2/AVG: ', str(i2.current) + '/' + str(i2.avg), 'A')
-
-        display.printStat(
-            10, 'I2.MIN/I2.MAX: ', str(i2.min) + '/' + str(i2.max), 'A')
-
-        display.printStat(
-            12, 'I3/AVG: ', str(i3.current) + '/' + str(i3.avg), 'A')
-
-        display.printStat(
-            13, 'I3.MIN/I3.MAX: ', str(i3.min) + '/' + str(i3.max), 'A')
     except Exception as e:
         if env.DEBUG:
             print('Error al mostrar datos en pantalla: ', e)
@@ -254,9 +273,9 @@ def thread1(datas):
             print("Memoria después de liberar:", gc.mem_free())
             print('Hilo 2 finalizado')
 
-        thread_lock_acquired = False
+        #thread_lock_acquired = False
 
-        thread_lock.release()
+        #thread_lock.release()
 
 while True:
     try:
@@ -273,4 +292,4 @@ while True:
         if env.DEBUG:
             print("Memoria después de liberar:", gc.mem_free())
 
-        time.sleep(5)
+        sleep(5)

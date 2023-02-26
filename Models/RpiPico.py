@@ -1,8 +1,6 @@
 
 from machine import ADC, Pin
-import _thread
 import network
-import rp2
 from time import sleep
 
 
@@ -102,15 +100,9 @@ class RpiPico():
             'current': round(float(self.current), 1)
         }
 
-    def secondThreadStartCallback(self, callback, params=()):
-        """
-        Inicializa un segundo hilo para ejecutar una función en paralelo sobre el microcontrolador.
-        """
-        _thread.start_new_thread(callback, params)
-
     def wifiStatus(self):
         """ Get wifi status"""
-        return self.wifi.status()
+        return self.wifi.status() if self.wifi else 0
 
     def wifiIsConnected(self):
         """ Get wifi is connected """
@@ -145,9 +137,6 @@ class RpiPico():
         self.wifi.config(pm = 0xa11140)
 
         #self.wifi.config(txpower=20, channel=2, ssid=ssid, security=4, password=password)
-        #self.wifi.config(txpower=20, ssid=ssid, security=2, password=password)
-
-        #self.wifi.config(txpower=20)
 
         self.wifi.connect(ssid, password)
 
@@ -199,18 +188,6 @@ class RpiPico():
     def wifiDisconnect(self):
         """ Disconnect from wifi"""
         self.wifi.disconnect()
-
-    def bluetoothStatus(self):
-        """ Get bluetooth status"""
-        return "Not implemented"
-
-    def bluetoothConnect(self):
-        """ Connect to bluetooth"""
-        return "Not implemented"
-
-    def bluetoothDisconnect(self):
-        """ Disconnect from bluetooth"""
-        return "Not implemented"
 
     def readAnalogInput(self, pin):
         """

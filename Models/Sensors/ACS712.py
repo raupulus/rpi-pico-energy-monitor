@@ -1,8 +1,5 @@
 # Sensor de intensidad
 
-from machine import ADC
-
-
 class ACS712():
 
     def __init__(self, adc_pin=26, sensibility=0.1, min_amperes=0.15, voltage_working=3.3, ):

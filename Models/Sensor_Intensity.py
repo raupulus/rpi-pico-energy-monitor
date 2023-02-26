@@ -1,7 +1,5 @@
-from machine import ADC
 from Models.Sensors.ACS712 import ACS712
 from Models.Sensors.Max471 import Max471
-from Models.ADS1115 import ADS1115
 import time
 
 class Sensor_Intensity():

@@ -3,34 +3,91 @@
 #
 from time import sleep
 from time import time
-from Library.ST7735 import ST7735
+from time import sleep_ms
+from Library.ST7735_Small import ST7735
 from machine import Pin
-
+from math import floor
 
 class DisplayST7735_128x160():
     TIME_TO_OFF = 10  # Tiempo en minutos para apagar la pantalla
+    DISPLAY_ORIENTATION = 3  # Orientación de la pantalla
+    DEBUG = False
 
-    # TODO: dinamizar letras y añadir más
-    fonts = {
-        'small': {
-            'h': 7,  # Alto de la letra
-            'w': 5,  # Ancho de la letra
-            'font': 'font5x7.fnt'  # Fuente
-        },
-        'medium': {
-            'h': 7,
-            'w': 5,
-            'font': 'font5x7.fnt'
-        },
-        'big': {
-            'h': 7,
-            'w': 5,
-            'font': 'font5x7.fnt'
-        }
+    DELAY = 0x80
+
+    DISPLAY_WIDTH = 160
+    DISPLAY_HEIGHT = 128
+
+    sensors_quantity = 10 # Cantida de sensores a mostrar
+
+    # Colores por secciones (de más claro a más oscuro)
+    COLORS = {
+        'white': 0xFFFF,
+        'black': 0x0000,
+
+        # Rojos
+        'red1': 0xF800,
+        'red2': 0xD800,
+        'red3': 0xB800,
+        'red4': 0x9000,
+        'red5': 0x7800,
+
+        # Amarillos
+        'yellow1': 0xFFE0,
+        'yellow2': 0xEE20,
+        'yellow3': 0xC618,
+        'yellow4': 0x8400,
+        'yellow5': 0x7C00,
+
+        # Verdes
+        'green1': 0x07E0,
+        'green2': 0x06E0,
+        'green3': 0x04E0,
+        'green4': 0x02E0,
+        'green5': 0x01E0,
+
+        # Azules
+        'blue1': 0x001F,
+        'blue2': 0x003F,
+        'blue3': 0x005F,
+        'blue4': 0x007F,
+        'blue5': 0x009F,
+
+        # Rosas
+        'pink1': 0xFC9F,
+        'pink2': 0xF81F,
+        'pink3': 0xD69A,
+        'pink4': 0xBDF7,
+        'pink5': 0xA953,
+
+        # Grises
+        'gray1': 0x7BEF,
+        'gray2': 0x739C,
+        'gray3': 0x6318,
+        'gray4': 0x4A49,
+        'gray5': 0x2104,
+
+        'orange1': 0xFD60,
+        'orange2': 0xFD20,
+        'orange3': 0xFB80,
+        'orange4': 0xFAE0,
+        'orange5': 0xFA60
     }
 
-    def __init__(self, spi, rst=9, ce=13, dc=12, offset=0, c_mode='RGB', btn_display_on=None):
-        self.display = ST7735(spi, rst, ce, dc, offset, c_mode)
+    # TODO: Añadir más fuentes y controlar bloques para no solapar, hacer grid almacenado
+    FONTS = {
+        'normal': {
+            'h': 7,  # Alto de la letra
+            'w': 5,  # Ancho de la letra
+            'font': 'font5x7.fnt',  # Fuente
+            'line_height': 9,  # Alto de la línea
+            'font_padding': 1  # Espacio entre carácteres
+        },
+    }
+
+    def __init__(self, spi, rst=9, ce=13, dc=12, offset=0, c_mode='RGB', btn_display_on=None, orientation=3, timeout=10, debug=False, color=0, background=0x000):
+        self.display = ST7735(spi, rst, ce, dc, offset, c_mode, color=color, background=background)
+        self.display.set_rotation(orientation)
 
         # Estado inicial de la pantalla
         self.reset()
@@ -38,13 +95,28 @@ class DisplayST7735_128x160():
         # Tiempo en el que se encendió la pantalla por primera vez
         self.display_on_at = time()
         self.display_on = True  # Indica si la pantalla está encendida o apagada
+        self.DEBUG = debug
+
+        self.DISPLAY_ORIENTATION = orientation
+        self.TIME_TO_OFF = timeout
+
+        if self.DISPLAY_ORIENTATION == 1:
+            self.DISPLAY_WIDTH = 160
+            self.DISPLAY_HEIGHT = 128
+        elif self.DISPLAY_ORIENTATION == 2:
+            self.DISPLAY_WIDTH = 128
+            self.DISPLAY_HEIGHT = 160
+        elif self.DISPLAY_ORIENTATION == 3:
+            self.DISPLAY_WIDTH = 160
+            self.DISPLAY_HEIGHT = 128
+        elif self.DISPLAY_ORIENTATION == 4:
+            self.DISPLAY_WIDTH = 128
+            self.DISPLAY_HEIGHT = 160
 
         if (btn_display_on is not None):
             self.btn_display_on = Pin(btn_display_on, Pin.IN, Pin.PULL_DOWN)
 
-            sleep(0.1)
-
-        # ST7735.ST7735_TFTHEIGHT = 160 # Establece la altura de la pantalla
+            sleep_ms(100)
 
     def reset(self):
         """
@@ -53,7 +125,7 @@ class DisplayST7735_128x160():
 
         self.display.reset()
         self.display.begin()
-        self.display.set_rotation(3)
+        self.display.set_rotation(self.DISPLAY_ORIENTATION)
         self.display._bground = 0x0000
         self.display.fill_screen(self.display._bground)
         self.cleanDisplay()
@@ -61,10 +133,7 @@ class DisplayST7735_128x160():
     def cleanDisplay(self):
         self.display.fill_screen(self.display._bground)
 
-        height = self.display._height  # Altura dónde inicia cada línea
-        width = self.display._width
-
-        self.display.draw_block(0, 0, width, height, self.display._bground)
+        self.display.draw_block(0, 0, self.DISPLAY_WIDTH, self.DISPLAY_HEIGHT, self.display._bground)
 
     def loop(self):
         """
@@ -74,12 +143,14 @@ class DisplayST7735_128x160():
         diffSeconds = time() - self.display_on_at
         diffMinutes = diffSeconds / 60
 
-        if diffMinutes > self.TIME_TO_OFF:
+        if diffMinutes > self.TIME_TO_OFF and self.display_on:
             self.display_on = False
-            self.reset()
 
             # TODO: Apagar la pantalla, LED de pantalla debería ser controlado por un GPIO
 
+            self.cleanDisplay()
+
+        elif not self.display_on:
             self.callbackDisplayOn()
 
     def callbackDisplayOn(self):
@@ -87,105 +158,233 @@ class DisplayST7735_128x160():
         Callback para encender la pantalla, se dispara al pulsar el botón de encendido
         """
         if self.btn_display_on.value() == 1:
-            self.reset()
+            #self.reset()
+            # TODO: Encender backlight de la pantalla
             self.display_on = True
             self.display_on_at = time()
 
-    def printStat(self, line, title, value, unity):
+            self.displayHeadInfo(0, '-')
+
+            ## TODO: Ver como recuperar cantidad de sensores!!!! por ahora son 10 siempre, pero puede cambiar
+            self.tableCreate(self.sensors_quantity)
+
+            self.displayFooterInfo()
+
+    def printChar(self, x, y, ch, color, bg_color):
+        font = self.FONTS['normal']  ## Fuente
+        font_height = font['h']  # Alto de la letra
+        font_width = font['w']  # Ancho de la letra
+        font_padding = font['font_padding']
+
+        fp = (ord(ch)-0x20) * font_width
+        f = open(font['font'], 'rb')
+        f.seek(fp)
+        b = f.read(font_width)
+        char_buf = bytearray(b)
+        char_buf.append(0)
+
+        font_height_padding = font_height + font_padding
+        font_width_padding = font_width + font_padding
+
+        # Creo la imagen del carácter teniendo en cuenta padding
+        char_image = bytearray()
+        for bit in range(font_height_padding):
+            for c in range(font_width_padding):
+                if ((char_buf[c] >> bit) & 1) > 0:
+                    char_image.append(color >> font_height_padding)
+                    char_image.append(color & 0xff)
+                else:
+                    char_image.append(bg_color >> font_height_padding)
+                    char_image.append(bg_color & 0xff)
+
+        self.display.draw_bmp(x, y, font_width_padding, font_height_padding, char_image)
+
+    def printByPos(self, line, pos, content, length = None, color = 0xFFE0, background = 0x0000):
         """
-        Imprime las estadísticas por la pantalla
-        @param line: Línea donde se imprime
-        @param title: Título de la estadística
-        @param value: Valor de la estadística
-        @param unity: Unidad de la estadística
+        Imprime contenido en una posición determinada borrando previamente el contenido si recibe longitud
+
+        line: integer, línea en eje vertical dónde se imprimirá el contenido
+        pos: integer, posición en eje horizontal dónde se imprimirá el contenido
+        content: string, contenido a dibujar
+        length: integer, longitud del contenido a borrar (cantidad de carácteres). Esto es para no dejar residuos de contenido anterior
         """
 
-        self.display.set_rotation(3)
+        font = self.FONTS['normal']  ## Fuente
+        font_width = font['w']  # Ancho de la letra
 
-        line_size = 10  # Altura dónde inicia cada línea
+        # Espacio entre carácteres teniendo en cuenta el paddding
+        font_total_width = font_width + (font['font_padding'] * 2)
+        line_height = font['line_height']  # Altura dónde inicia cada línea
 
-        y = line * line_size  # Posición de inicio
-        x = 5
+        # Cantidad máxima de carácteres en la línea
+        max_line_chars = floor(self.DISPLAY_WIDTH / (font_width + font['font_padding']))
 
-        # Limpio a partir del título
-        allLength = len(title) + len(str(value)) + len(unity)
-        self.display.draw_block(len(title) * 6, y, allLength - len(title),
-                                line_size, self.display._bground)
+        content = str(content)
 
-        # Muestro título
-        self.display._color = 0xF800
-        self.display.p_string(x, y, title)
+        if len(content) > max_line_chars:
+            content = content[0:max_line_chars]
 
-        # Muestro Valor
-        self.display._color = 0x07E0
-        self.display.p_string(x + (len(title) * 6), y, str(value))
+        pixels_x = pos * font_total_width # Posición en eje horizontal para iniciar a dibujar
+        pixels_y = line * line_height # Posición en eje vertical para iniciar a dibujar
 
-        # Muestro unidad de medida
-        self.display._color = 0xFFE0
-        self.display.p_string(
-            x + ((len(title) * 6) + (len(str(value)) * 6)), y, ' ' + str(unity))
+        # Si recibo la longitud, borro el contenido previo
+        if length:
+            clean_length_width = int(length) * font_total_width
 
-    def printMessage(self, message):
-        pass
+            self.display.draw_block(pixels_x, pixels_y, clean_length_width, line_height, background)
 
-    def example(self):
-        print('in display example')
-        self.display.reset()
-        self.display.begin()
-        self.display._bground = 0x0fff
-        self.display.fill_screen(self.display._bground)
+        pixels_x_counter = pixels_x
 
-        sleep(1)
+        for ch in (content):
+            self.printChar(pixels_x_counter, pixels_y, ch, color, background)
+            pixels_x_counter += font_width + font['font_padding']
 
-        self.display.reset()
-        self.display.begin()
-        self.display._bground = 0x00ff
-        self.display.fill_screen(self.display._bground)
 
-        sleep(1)
+    def displayHeadInfo(self, wifi_status, voltage):
+        """
+        La primera fila de la pantalla será para mostrar información del estado en general. Esta información contempla:
+        - Estado de la conexión wifi
+        - Estado de la subida de datos a la API
+        - ¿Título o logotipo?
+        """
 
-        self.display.reset()
-        self.display.begin()
-        self.display._bground = 0x000f
-        self.display.fill_screen(self.display._bground)
+        font = self.FONTS['normal']  ## Fuente
+        font_width = font['w']  # Ancho de la letra
+        font_total_width = font_width + (font['font_padding'] * 2)
 
-        sleep(1)
+        # Cantidad máxima de carácteres en la línea
+        max_line_chars = floor(self.DISPLAY_WIDTH / font_total_width)
 
-        self.display.reset()
-        self.display.begin()
-        self.display._bground = 0x0000
-        self.display.fill_screen(self.display._bground)
+        color = self.COLORS['yellow1']
+        background = self.COLORS['red3']
 
-        sleep(1)
-
-        self.display._color = 0
-        self.display.set_rotation(0)
-        self.display.p_string(10, 10, 'Hello World 1')
-
-        self.display._color = 0xf100
-        self.display.set_rotation(1)
-        self.display.p_string(10, 10, 'Hello World 2')
-
-        self.display._color = 0x07e0
-        self.display.set_rotation(2)
-        self.display.p_string(10, 10, 'Hello World 3')
-
-        self.display._color = 0x001f
-        self.display.set_rotation(3)
-        self.display.p_string(10, 10, 'Hello World 4')
+        ## Dibujar fondo de dos líneas
+        self.display.draw_block(0, 0, self.DISPLAY_WIDTH, font['line_height'] * 2, background)
 
         """
-        sleep(1)
-        x = int(self.display._width/2)
-        y = int(self.display._height/2)
-        r = int(min(x,y)/2)
-        self.display.fill_screen(self.display.rgb_to_565(255,255,255))
-        color = self.display.rgb_to_565(0,36,125)
-        lcd_gfx.drawfillCircle(x,y,r,d,color)
-        r = int(r*2/3)
-        color = self.display.rgb_to_565(255,255,255)
-        lcd_gfx.drawfillCircle(x,y,r,d,color)
-        r = int(r/2)
-        color = self.display.rgb_to_565(206,17,38)
-        lcd_gfx.drawfillCircle(x,y,r,d,color)
+        INFORMACIÓN DEL VOLTAJE
         """
+        block_voltaje_width = 8 # Ancho del bloque carácteres para la información del voltaje
+
+        voltage_content = str(voltage) + 'V'
+
+        self.printByPos(0, 0, voltage_content, block_voltaje_width, color, background)
+
+        """
+        INFORMACIÓN DEL WIFI
+        """
+        block_wireless_width = 9 # Ancho del bloque carácteres para la información del wifi
+
+        # Posición del comienzo para el estado del wifi. Calculado desde la derecha de la pantalla
+        pos_wireless_start = max_line_chars - block_wireless_width
+        wifi_on = 'ON' if wifi_status >= 3 else 'OFF'
+        content = '   W: ' + wifi_on # W: ON | W: OFF
+
+        self.printByPos(0, pos_wireless_start, content, block_wireless_width, color, background)
+
+
+        """
+        INFORMACIÓN EN EL CENTRO
+        """
+        center_content = '     RASPBERRY PI PICO'
+        start_x = floor((max_line_chars/2) - (len(center_content) / 2))
+
+        self.printByPos(1, start_x, center_content, len(center_content), color, background)
+
+
+        """
+        Dibujo de la línea de separación, 2 píxeles de alto al final del bloque
+        """
+        #self.display.draw_block(0, (font['line_height'] * 2) - 2, self.DISPLAY_WIDTH, 2, color_separator)
+
+    def displayFooterInfo(self, center = None):
+        font = self.FONTS['normal']  ## Fuente
+        font_width = font['w']  # Ancho de la letra
+        font_total_width = font_width + font['font_padding']
+
+        # Cantidad máxima de carácteres en la línea
+        max_line_chars = floor(self.DISPLAY_WIDTH / font_total_width)
+
+        """
+        INFORMACIÓN EN EL CENTRO
+        """
+
+        if not center:
+            center_content = 'MONITOR DE ENERGIA'
+
+        ## TODO: Usar sensor RTC para obtener timestamps?
+        #time_content = '07/11/2023 16:31:14'
+        center_content = 'MONITOR DE ENERGIA'
+
+        start_x = floor((max_line_chars/2) - (len(center_content) / 2))
+
+        line = floor((self.DISPLAY_HEIGHT / font['line_height']) - 1)
+
+        color = self.COLORS['black']
+        background = self.COLORS['white']
+
+
+        self.display.draw_block(0, line * font['line_height'], self.DISPLAY_WIDTH, font['line_height'], background)
+
+        self.printByPos(line, start_x, center_content, len(center_content), color, background)
+
+    def tableCreate(self, sensorsQuantity = None):
+        """
+        sensorsQuantity: integer, cantidad de sensores para la tabla
+        """
+
+        if sensorsQuantity:
+            self.sensors_quantity = sensorsQuantity
+        else:
+            sensorsQuantity = self.sensors_quantity
+
+        font = self.FONTS['normal']  ## Fuente
+        font_width = font['w']  # Ancho de la letra
+
+        # Cantidad máxima de carácteres en la línea
+        max_line_chars = floor(self.DISPLAY_WIDTH / (font_width + font['font_padding']))
+
+        # Colores
+        colors = self.COLORS
+        color_th = colors['white']
+        color_th_bg = colors['blue4']
+        color_separator = colors['yellow1']
+
+        # Cabecera con los nombres de las columnas
+        self.printByPos(2, 0, '     Ic    Avg   Min   Max', max_line_chars, color=color_th, background=color_th_bg)
+
+        """
+        Dibujo de la línea de separación, 2 píxeles de alto al final del bloque
+        """
+        self.display.draw_block(0, (font['line_height'] * 2) - 2, self.DISPLAY_WIDTH, 2, color_separator)
+
+        current_line = 3
+        iterations = sensorsQuantity
+
+        while iterations:
+            title = 'I' + str((sensorsQuantity - iterations) + 1)
+
+            if (iterations < 10):
+                title += ' '
+
+            self.printByPos(current_line, 0, title, max_line_chars, 0xFFE0)
+
+            current_line += 1
+            iterations -= 1
+
+
+    def tableAddValue(self, pos, current, avg, min, max):
+        """
+        pos: posición que ocupa el sensor, en el array de datos se establece
+        value: float de una posición (3 carácteres, ej: 1.2)
+        """
+
+        line = int(pos) + 2 # Número de línea en vertical dónde comenzamos, saltamos la cabecera
+
+        block_char_size = 5 # Cantidad de carácteres que ocupa un bloque
+        margin_chars_left = 4 # Margen izquierdo para comenzar a dibujar los bloques
+
+        self.printByPos(line, margin_chars_left, current, block_char_size, 0x07E0)
+        self.printByPos(line, margin_chars_left + block_char_size, avg, block_char_size, color=0x07E0)
+        self.printByPos(line, margin_chars_left + (block_char_size * 2), min, block_char_size, 0x07E0)
+        self.printByPos(line, margin_chars_left + (block_char_size * 3), max, block_char_size, 0x07E0)

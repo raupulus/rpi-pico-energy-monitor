@@ -6,7 +6,6 @@
 from machine import Pin
 import time
 import math
-from Library.Lcd_Gfx import Lcd_Gfx
 
 # constants
 DELAY = 0x80
@@ -69,8 +68,8 @@ ST7735_MADCTL_BGR = 0x08
 ST7735_MADCTL_MH = 0x04
 
 
-class ST7735(Lcd_Gfx):
-    def __init__(self, spi, rst=4, ce=5, dc=16, offset=0, c_mode='RGB', background=0x000):
+class ST7735():
+    def __init__(self, spi, rst=4, ce=5, dc=16, offset=0, c_mode='RGB', color = 0, background=0x000):
         self._rst = Pin(rst, Pin.OUT)   	# 4
         self._ce = Pin(ce, Pin.OUT)    		# 5
         self._ce.high()
@@ -81,7 +80,7 @@ class ST7735(Lcd_Gfx):
         self._y = 0
         self._width = ST7735_TFTWIDTH
         self._height = ST7735_TFTHEIGHT
-        self._color = 0
+        self._color = color
         self._bground = background
 
         if c_mode == 'RGB':
@@ -264,33 +263,6 @@ class ST7735(Lcd_Gfx):
 
     def fill_screen(self, color):
         self.draw_block(0, 0, self._width, self._height, color)
-
-    def p_char(self, x, y, ch):
-        # OJO: REESCRITO EN MI DISPLAY -> printChar()
-        fp = (ord(ch)-0x20) * 5
-        f = open('font5x7.fnt', 'rb')
-        f.seek(fp)
-        b = f.read(5)
-        char_buf = bytearray(b)
-        char_buf.append(0)
-
-        # make 8x6 image
-        char_image = bytearray()
-        for bit in range(8):
-            for c in range(6):
-                if ((char_buf[c] >> bit) & 1) > 0:
-                    char_image.append(self._color >> 8)
-                    char_image.append(self._color & 0xff)
-                else:
-                    char_image.append(self._bground >> 8)
-                    char_image.append(self._bground & 0xff)
-        self.draw_bmp(x, y, 6, 8, char_image)
-
-    def p_string(self, x, y, str):
-        # OJO: REESCRITO EN MI DISPLAY -> printByPos()
-        for ch in (str):
-            self.p_char(x, y, ch)
-            x += 6
 
     def rgb_to_565(self, r, g, b):
         return ((r & 0xF8) << 8) | ((g & 0xFC) << 3) | (b >> 3)
