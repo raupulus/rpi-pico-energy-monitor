@@ -1,7 +1,6 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 #
-from time import sleep
 from time import time
 from time import sleep_ms
 from Library.ST7735_Small import ST7735
@@ -367,7 +366,14 @@ class DisplayST7735_128x160():
             if (iterations < 10):
                 title += ' '
 
-            self.printByPos(current_line, 0, title, max_line_chars, 0xFFE0)
+            if current_line % 2 == 0:
+                color = colors['yellow1'] #0xFFE0
+                background = colors['gray5'] #0x0000
+            else:
+                color = colors['yellow1'] #0xFFE0
+                background = colors['black'] #0x0000
+
+            self.printByPos(current_line, 0, title, max_line_chars, color=color, background=background)
 
             current_line += 1
             iterations -= 1
@@ -384,7 +390,16 @@ class DisplayST7735_128x160():
         block_char_size = 5 # Cantidad de carácteres que ocupa un bloque
         margin_chars_left = 4 # Margen izquierdo para comenzar a dibujar los bloques
 
-        self.printByPos(line, margin_chars_left, current, block_char_size, 0x07E0)
-        self.printByPos(line, margin_chars_left + block_char_size, avg, block_char_size, color=0x07E0)
-        self.printByPos(line, margin_chars_left + (block_char_size * 2), min, block_char_size, 0x07E0)
-        self.printByPos(line, margin_chars_left + (block_char_size * 3), max, block_char_size, 0x07E0)
+        colors = self.COLORS
+
+        if line % 2 == 0:
+            color = colors['green1'] #0x07E0
+            background = colors['gray5'] #0x0000
+        else:
+            color = colors['green1']
+            background = colors['black']
+
+        self.printByPos(line, margin_chars_left, current, block_char_size, color=color, background=background)
+        self.printByPos(line, margin_chars_left + block_char_size, avg, block_char_size, color=color, background=background)
+        self.printByPos(line, margin_chars_left + (block_char_size * 2), min, block_char_size, color=color, background=background)
+        self.printByPos(line, margin_chars_left + (block_char_size * 3), max, block_char_size, color=color, background=background)

@@ -251,10 +251,13 @@ def thread1(sensors, wifi_status, voltage):
 
     for sensor in sensors:
         print('')
-        print('')
         print('ENTRA')
+        current = round(float(sensor['current']), 2) if sensor['current'] > 0 and sensor['current'] < 10 else round(float(sensor['current']), 1)
+        avg = round(float(sensor['avg']), 2) if sensor['avg'] > 0 and sensor['avg'] < 10 else round(float(sensor['avg']), 1)
+        min = round(float(sensor['min']), 2) if sensor['min'] > 0 and sensor['min'] < 10 else round(float(sensor['min']), 1)
+        max = round(float(sensor['max']), 2) if sensor['max'] > 0 and sensor['max'] < 10 else round(float(sensor['max']), 1)
 
-        display.tableAddValue(sensor['pos'], sensor['current'], sensor['avg'], sensor['min'], sensor['max'])
+        display.tableAddValue(sensor['pos'], current, avg, min, max)
 
     try:
         pass
