@@ -1,9 +1,6 @@
 from machine import Pin, SPI
-#import _thread, gc
-import gc
-from time import sleep_ms
-from time import sleep
-from time import time
+import _thread, gc
+from time import sleep_ms, sleep, time
 from Models.DisplayST7735_128x160 import DisplayST7735_128x160
 from Models.Sensor_Intensity import Sensor_Intensity
 from Models.Sensor_Voltage import Sensor_Voltage
@@ -22,7 +19,7 @@ TIME_TO_UPLOAD = 10  # Cada cuantos segundos se suben los datos a la api
 TIME_TO_SHOW_DATA = 5  # Cada cuantos segundos se muestran los datos en la pantalla
 
 # Rpi Pico Model
-if env.UPLOAD_API:
+if env.UPLOAD_API and env.AP_NAME and env.AP_PASS:
     controller = RpiPico(ssid=env.AP_NAME, password=env.AP_PASS, debug=env.DEBUG)
 else:
     controller = RpiPico(debug=env.DEBUG)
@@ -46,44 +43,14 @@ adcWrapper1 = ADS1115(4, 5, 0, 3.3, 0x49)
 SENSOR_VOLTAGE = Sensor_Voltage(
     28, 0.5, controller.voltage_working, controller.adc_voltage_correction, debug=env.DEBUG)
 
-sleep_ms(200)
-
-## Crea base de la pantalla
-SENSOR_VOLTAGE.readSensor()
-sleep_ms(100)
-display.displayHeadInfo(wifi_status=controller.wifiStatus(), voltage=SENSOR_VOLTAGE.current)
-sleep_ms(display.DELAY)
-display.displayFooterInfo()
-sleep_ms(display.DELAY)
-display.tableCreate()
-sleep_ms(display.DELAY)
-display.tableAddValue(1, 3.21, 3.21, 3.21, 3.21)
-sleep_ms(display.DELAY)
-display.tableAddValue(2, 3.2, 3.2, 3.2, 3.2)
-sleep_ms(display.DELAY)
-display.tableAddValue(3, 3.2, 3.2, 3.2, 3.2)
-sleep_ms(display.DELAY)
-display.tableAddValue(4, 3.2, 3.2, 3.2, 3.2)
-sleep_ms(display.DELAY)
-display.tableAddValue(5, 3.2, 3.2, 3.2, 3.2)
-sleep_ms(display.DELAY)
-display.tableAddValue(6, 3.2, 3.2, 3.2, 3.2)
-sleep_ms(display.DELAY)
-display.tableAddValue(7, 3.2, 3.2, 3.2, 3.2)
-sleep_ms(display.DELAY)
-display.tableAddValue(8, 3.2, 3.2, 3.2, 3.2)
-sleep_ms(display.DELAY)
-display.tableAddValue(9, 3.2, 3.2, 3.2, 3.2)
-sleep_ms(display.DELAY)
-display.tableAddValue(10, 3.2, 3.2, 3.2, 3.2)
-gc.collect()
+sleep_ms(10)
 
 channelSensors = []
 
 for channel in Channels(controller, adcWrapper, adcWrapper1, debug=env.DEBUG).getSensors():
     if channel.get('active'):
 
-        sleep_ms(120)
+        sleep_ms(10)
 
         channelSensors.append({
             'pos': channel.get('pos'),
@@ -96,22 +63,30 @@ for channel in Channels(controller, adcWrapper, adcWrapper1, debug=env.DEBUG).ge
             )
         })
 
+#gc.collect()
 
 # Instancia de la api
 api = Api(controller, channelSensors, env.API_URL, env.API_PATH, env.API_TOKEN, debug=env.DEBUG)
 
 # Primeras lecturas de sensores integrados
-sleep(1)
+sleep_ms(50)
 controller.readSensorTemp()
-sleep(1)
+sleep_ms(100)
 SENSOR_VOLTAGE.readSensor()
 sleep_ms(100)
 
-# Variables para el manejo de bloqueo con el segundo core
-#thread_lock = _thread.allocate_lock()
-#thread_lock_acquired = False
+## Crea base de la pantalla
+display.displayHeadInfo(wifi_status=controller.wifiStatus(), voltage=SENSOR_VOLTAGE.current)
+sleep_ms(display.DELAY)
+display.displayFooterInfo()
+sleep_ms(display.DELAY)
+display.tableCreate(len(channelSensors), demo=True)
 
-gc.collect()
+# Variables para el manejo de bloqueo con el segundo core
+thread_lock = _thread.allocate_lock()
+thread_lock_acquired = False
+
+#gc.collect()
 
 def thread0():
     """
@@ -119,7 +94,7 @@ def thread0():
     """
 
     # Inicializo el contador de lecturas
-    counter = 0
+    #counter = 0
 
     # Momento de la última subida a la api.
     last_upload_at = time()
@@ -128,10 +103,10 @@ def thread0():
     last_show_display_at = time()
 
     while True:
-        sleep_ms(10)
-
         if env.DEBUG:
             print('.')
+
+        #counter += 1
 
         # Aquí se almacenará información final para subir a la api o mostrar por pantalla
         read_data = None
@@ -139,7 +114,7 @@ def thread0():
         if not controller.locked:
             controller.readSensorTemp()
 
-            sleep_ms(20)
+            sleep_ms(10)
 
             SENSOR_VOLTAGE.readSensor()
 
@@ -156,10 +131,10 @@ def thread0():
             sensor = channel.get('sensor')
 
             if sensor.controller.locked:
-                sleep_ms(20)
+                sleep_ms(10)
                 continue
 
-            sleep_ms(20)
+            sleep_ms(10)
             sensor.readSensor()
 
             # Solo almaceno los datos cuando se va a subir a la api o se va a mostrar por pantalla
@@ -200,16 +175,16 @@ def thread0():
         if need_show_display and display and display.display_on:
             last_show_display_at = time()
 
-            #global thread_lock
-            #global thread_lock_acquired
+            global thread_lock
+            global thread_lock_acquired
 
             # Levanta un hilo independiente para mostrar los datos en la pantalla y subirlos a la api
-            #if not thread_lock_acquired and read_data:
-                #thread_lock_acquired = True
-                #_thread.start_new_thread(thread1, (read_data.get('intensity'),))
+            if not thread_lock_acquired and read_data:
+                thread_lock_acquired = True
+                _thread.start_new_thread(thread1, (read_data.get('intensity'), controller.wifiStatus(), read_data['voltage_current']))
 
-            if (read_data and len(read_data)):
-                thread1(read_data.get('intensity'), controller.wifiStatus(), read_data['voltage_current'])
+            #if (read_data and len(read_data)):
+            #    thread1(read_data.get('intensity'), controller.wifiStatus(), read_data['voltage_current'])
 
         if need_upload and read_data and len(read_data):
             controller.locked = True
@@ -218,7 +193,6 @@ def thread0():
             for key in read_data:
                 print(key, read_data[key])
                 print()
-
 
             try:
                 if controller.wifiIsConnected() == False:
@@ -242,26 +216,23 @@ def thread1(sensors, wifi_status, voltage):
     """
     Segundo hilo para acciones secundarias.
     """
-    #global thread_lock
-    #global thread_lock_acquired
+    global thread_lock
+    global thread_lock_acquired
 
-    #thread_lock.acquire()
+    thread_lock.acquire()
 
-    display.displayHeadInfo(wifi_status, voltage)
-
-    for sensor in sensors:
-        print('')
-        print('ENTRA')
-        current = round(float(sensor['current']), 2) if sensor['current'] > 0 and sensor['current'] < 10 else round(float(sensor['current']), 1)
-        avg = round(float(sensor['avg']), 2) if sensor['avg'] > 0 and sensor['avg'] < 10 else round(float(sensor['avg']), 1)
-        min = round(float(sensor['min']), 2) if sensor['min'] > 0 and sensor['min'] < 10 else round(float(sensor['min']), 1)
-        max = round(float(sensor['max']), 2) if sensor['max'] > 0 and sensor['max'] < 10 else round(float(sensor['max']), 1)
-
-        display.tableAddValue(sensor['pos'], current, avg, min, max)
+    gc.collect()
 
     try:
-        pass
+        display.displayHeadInfo(wifi_status, voltage)
 
+        for sensor in sensors:
+            current = round(float(sensor['current']), 2) if sensor['current'] > 0 and sensor['current'] < 10 else round(float(sensor['current']), 1)
+            avg = round(float(sensor['avg']), 2) if sensor['avg'] > 0 and sensor['avg'] < 10 else round(float(sensor['avg']), 1)
+            min = round(float(sensor['min']), 2) if sensor['min'] > 0 and sensor['min'] < 10 else round(float(sensor['min']), 1)
+            max = round(float(sensor['max']), 2) if sensor['max'] > 0 and sensor['max'] < 10 else round(float(sensor['max']), 1)
+
+            display.tableAddValue(sensor['pos'], current, avg, min, max)
 
     except Exception as e:
         if env.DEBUG:
@@ -276,9 +247,9 @@ def thread1(sensors, wifi_status, voltage):
             print("Memoria después de liberar:", gc.mem_free())
             print('Hilo 2 finalizado')
 
-        #thread_lock_acquired = False
+        thread_lock_acquired = False
 
-        #thread_lock.release()
+        thread_lock.release()
 
 while True:
     try:

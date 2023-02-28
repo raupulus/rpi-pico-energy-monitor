@@ -19,6 +19,8 @@ class DisplayST7735_128x160():
 
     sensors_quantity = 10 # Cantida de sensores a mostrar
 
+    locked = False
+
     # Colores por secciones (de más claro a más oscuro)
     COLORS = {
         'white': 0xFFFF,
@@ -121,18 +123,17 @@ class DisplayST7735_128x160():
         """
         Prepara el estado inicial de la pantalla.
         """
-
         self.display.reset()
         self.display.begin()
         self.display.set_rotation(self.DISPLAY_ORIENTATION)
-        self.display._bground = 0x0000
-        self.display.fill_screen(self.display._bground)
         self.cleanDisplay()
 
     def cleanDisplay(self):
-        self.display.fill_screen(self.display._bground)
+        black = self.COLORS['black']
 
-        self.display.draw_block(0, 0, self.DISPLAY_WIDTH, self.DISPLAY_HEIGHT, self.display._bground)
+        self.display._bground = black
+        self.display.fill_screen(black)
+        self.display.draw_block(0, 0, self.DISPLAY_WIDTH, self.DISPLAY_HEIGHT, black)
 
     def loop(self):
         """
@@ -157,19 +158,33 @@ class DisplayST7735_128x160():
         Callback para encender la pantalla, se dispara al pulsar el botón de encendido
         """
         if self.btn_display_on.value() == 1:
-            #self.reset()
-            # TODO: Encender backlight de la pantalla
-            self.display_on = True
-            self.display_on_at = time()
+            if self.locked:
+                while self.locked:
+                    sleep_ms(10)
 
-            self.displayHeadInfo(0, '-')
+            try:
+                #self.reset()
+                # TODO: Encender backlight de la pantalla
+                self.display_on = True
+                self.display_on_at = time()
 
-            ## TODO: Ver como recuperar cantidad de sensores!!!! por ahora son 10 siempre, pero puede cambiar
-            self.tableCreate(self.sensors_quantity)
-
-            self.displayFooterInfo()
+                self.displayHeadInfo(0, 0)
+                self.displayFooterInfo()
+                self.tableCreate(self.sensors_quantity)
+            except Exception as e:
+                if self.DEBUG:
+                    print('Error al encender la pantalla: {}'.format(e))
+            finally:
+                self.locked = False
 
     def printChar(self, x, y, ch, color, bg_color):
+        if not self.display_on:
+            return
+
+        if self.locked:
+            while self.locked:
+                sleep_ms(10)
+
         font = self.FONTS['normal']  ## Fuente
         font_height = font['h']  # Alto de la letra
         font_width = font['w']  # Ancho de la letra
@@ -265,7 +280,7 @@ class DisplayST7735_128x160():
         """
         block_voltaje_width = 8 # Ancho del bloque carácteres para la información del voltaje
 
-        voltage_content = str(voltage) + 'V'
+        voltage_content = str(round(voltage, 2)) + 'V'
 
         self.printByPos(0, 0, voltage_content, block_voltaje_width, color, background)
 
@@ -327,7 +342,7 @@ class DisplayST7735_128x160():
 
         self.printByPos(line, start_x, center_content, len(center_content), color, background)
 
-    def tableCreate(self, sensorsQuantity = None):
+    def tableCreate(self, sensorsQuantity = None, demo = False):
         """
         sensorsQuantity: integer, cantidad de sensores para la tabla
         """
@@ -358,7 +373,7 @@ class DisplayST7735_128x160():
         self.display.draw_block(0, (font['line_height'] * 2) - 2, self.DISPLAY_WIDTH, 2, color_separator)
 
         current_line = 3
-        iterations = sensorsQuantity
+        iterations = sensorsQuantity if sensorsQuantity <= 10 else 10
 
         while iterations:
             title = 'I' + str((sensorsQuantity - iterations) + 1)
@@ -378,12 +393,19 @@ class DisplayST7735_128x160():
             current_line += 1
             iterations -= 1
 
+        if demo:
+            for self.sensors_quantity in range(1, 11):
+                self.tableAddValue(self.sensors_quantity, 0.00, 0.00, 0.00, 0.00)
+
 
     def tableAddValue(self, pos, current, avg, min, max):
         """
         pos: posición que ocupa el sensor, en el array de datos se establece
         value: float de una posición (3 carácteres, ej: 1.2)
         """
+
+        if pos > 10:
+            return
 
         line = int(pos) + 2 # Número de línea en vertical dónde comenzamos, saltamos la cabecera
 
