@@ -57,7 +57,7 @@ class Sensor_Voltage():
                 return 0.00
 
 
-            voltage = round(float(value), 2)
+            voltage = float(value)
             self.current = voltage
 
             # Estadísticas
@@ -68,7 +68,7 @@ class Sensor_Voltage():
 
             self.reads += 1
 
-            self.avg = round(float((self.avg + voltage) / 2), 2)
+            self.avg = float((self.avg + voltage) / 2)
         except Exception as e:
             if self.DEBUG:
                 print('Error al leer sensor de voltaje', e)
@@ -92,15 +92,15 @@ class Sensor_Voltage():
 
             sum += voltage
 
-        return round(float(sum/samples), 2)
+        return float(sum/samples)
 
     def getStats(self):
         """ Get Statistics formated as a dictionary"""
 
         return {
-            'max': round(float(self.max), 2),
-            'min': round(float(self.min), 2),
-            'avg': round(float(self.avg), 2),
-            'current': round(float(self.current), 2),
+            'max': float(self.max),
+            'min': float(self.min),
+            'avg': float(self.avg),
+            'current': float(self.current),
             'reads': self.reads
         }

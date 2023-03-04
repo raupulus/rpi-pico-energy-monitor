@@ -64,7 +64,7 @@ class Sensor_Intensity():
 
         value = self.SENSOR.readAnalogInput(read)
 
-        amperes = round(float(value), 2)
+        amperes = float(value)
 
         self.current = amperes
 
@@ -77,7 +77,7 @@ class Sensor_Intensity():
 
         self.reads += 1
 
-        self.avg = round(float((self.avg + amperes) / 2), 2)
+        self.avg = float((self.avg + amperes) / 2)
 
         return amperes
 
@@ -94,15 +94,15 @@ class Sensor_Intensity():
 
             sum += intensity
 
-        return round(float(sum/samples), 2)
+        return float(sum/samples)
 
     def getStats(self, samples=50):
         """ Get Statistics formated as a dictionary"""
 
         return {
-            'max': round(float(self.max), 2),
-            'min': round(float(self.min), 2),
-            'avg': round(float(self.avg), 2),
-            'current': round(float(self.current), 2),
+            'max': float(self.max),
+            'min': float(self.min),
+            'avg': float(self.avg),
+            'current': float(self.current),
             'reads': self.reads
         }

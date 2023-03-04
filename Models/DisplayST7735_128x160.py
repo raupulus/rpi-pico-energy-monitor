@@ -123,17 +123,33 @@ class DisplayST7735_128x160():
         """
         Prepara el estado inicial de la pantalla.
         """
+
+        while self.locked:
+            sleep_ms(10)
+
         self.display.reset()
         self.display.begin()
         self.display.set_rotation(self.DISPLAY_ORIENTATION)
         self.cleanDisplay()
 
     def cleanDisplay(self):
-        black = self.COLORS['black']
 
-        self.display._bground = black
-        self.display.fill_screen(black)
-        self.display.draw_block(0, 0, self.DISPLAY_WIDTH, self.DISPLAY_HEIGHT, black)
+        while self.locked:
+            sleep_ms(10)
+
+        try:
+            self.locked = True
+
+            black = self.COLORS['black']
+            self.display._bground = black
+            self.display.set_rotation(self.DISPLAY_ORIENTATION)
+            self.display.fill_screen(black)
+            self.display.draw_block(0, 0, self.DISPLAY_WIDTH, self.DISPLAY_HEIGHT, black)
+        except Exception as e:
+            if self.DEBUG:
+                print('Error en cleanDisplay(): {}'.format(e))
+        finally:
+            self.locked = False
 
     def loop(self):
         """
@@ -158,13 +174,16 @@ class DisplayST7735_128x160():
         Callback para encender la pantalla, se dispara al pulsar el botón de encendido
         """
         if self.btn_display_on.value() == 1:
-            if self.locked:
-                while self.locked:
-                    sleep_ms(10)
+            while self.locked:
+                if self.DEBUG:
+                    print('Esperando a que se desbloquee la pantalla en callbackDisplayOn()')
+
+                sleep_ms(10)
 
             try:
                 #self.reset()
                 # TODO: Encender backlight de la pantalla
+                self.cleanDisplay()
                 self.display_on = True
                 self.display_on_at = time()
 
@@ -181,37 +200,47 @@ class DisplayST7735_128x160():
         if not self.display_on:
             return
 
-        if self.locked:
-            while self.locked:
-                sleep_ms(10)
+        while self.locked:
+            if self.DEBUG:
+                print('Esperando a que se desbloquee la pantalla en printChar()')
 
-        font = self.FONTS['normal']  ## Fuente
-        font_height = font['h']  # Alto de la letra
-        font_width = font['w']  # Ancho de la letra
-        font_padding = font['font_padding']
+            sleep_ms(10)
 
-        fp = (ord(ch)-0x20) * font_width
-        f = open(font['font'], 'rb')
-        f.seek(fp)
-        b = f.read(font_width)
-        char_buf = bytearray(b)
-        char_buf.append(0)
+        try:
+            self.locked = True
 
-        font_height_padding = font_height + font_padding
-        font_width_padding = font_width + font_padding
+            font = self.FONTS['normal']  ## Fuente
+            font_height = font['h']  # Alto de la letra
+            font_width = font['w']  # Ancho de la letra
+            font_padding = font['font_padding']
 
-        # Creo la imagen del carácter teniendo en cuenta padding
-        char_image = bytearray()
-        for bit in range(font_height_padding):
-            for c in range(font_width_padding):
-                if ((char_buf[c] >> bit) & 1) > 0:
-                    char_image.append(color >> font_height_padding)
-                    char_image.append(color & 0xff)
-                else:
-                    char_image.append(bg_color >> font_height_padding)
-                    char_image.append(bg_color & 0xff)
+            fp = (ord(ch)-0x20) * font_width
+            f = open(font['font'], 'rb')
+            f.seek(fp)
+            b = f.read(font_width)
+            char_buf = bytearray(b)
+            char_buf.append(0)
 
-        self.display.draw_bmp(x, y, font_width_padding, font_height_padding, char_image)
+            font_height_padding = font_height + font_padding
+            font_width_padding = font_width + font_padding
+
+            # Creo la imagen del carácter teniendo en cuenta padding
+            char_image = bytearray()
+            for bit in range(font_height_padding):
+                for c in range(font_width_padding):
+                    if ((char_buf[c] >> bit) & 1) > 0:
+                        char_image.append(color >> font_height_padding)
+                        char_image.append(color & 0xff)
+                    else:
+                        char_image.append(bg_color >> font_height_padding)
+                        char_image.append(bg_color & 0xff)
+
+            self.display.draw_bmp(x, y, font_width_padding, font_height_padding, char_image)
+        except Exception as e:
+            if self.DEBUG:
+                print('Error en printChar(): {}'.format(e))
+        finally:
+            self.locked = False
 
     def printByPos(self, line, pos, content, length = None, color = 0xFFE0, background = 0x0000):
         """
@@ -262,6 +291,12 @@ class DisplayST7735_128x160():
         - ¿Título o logotipo?
         """
 
+        while self.locked:
+            if self.DEBUG:
+                print('Esperando a que se desbloquee la pantalla en displayHeadInfo()')
+
+            sleep_ms(10)
+
         font = self.FONTS['normal']  ## Fuente
         font_width = font['w']  # Ancho de la letra
         font_total_width = font_width + (font['font_padding'] * 2)
@@ -305,13 +340,14 @@ class DisplayST7735_128x160():
 
         self.printByPos(1, start_x, center_content, len(center_content), color, background)
 
-
-        """
-        Dibujo de la línea de separación, 2 píxeles de alto al final del bloque
-        """
-        #self.display.draw_block(0, (font['line_height'] * 2) - 2, self.DISPLAY_WIDTH, 2, color_separator)
-
     def displayFooterInfo(self, center = None):
+
+        while self.locked:
+            if self.DEBUG:
+                print('Esperando a que se desbloquee la pantalla en displayFooterInfo()')
+
+            sleep_ms(10)
+
         font = self.FONTS['normal']  ## Fuente
         font_width = font['w']  # Ancho de la letra
         font_total_width = font_width + font['font_padding']
@@ -337,8 +373,16 @@ class DisplayST7735_128x160():
         color = self.COLORS['black']
         background = self.COLORS['white']
 
+        try:
+            # TODO: Extraer el "draw_block" a un método de esta clase
+            self.locked = True
+            self.display.draw_block(0, line * font['line_height'], self.DISPLAY_WIDTH, font['line_height'], background)
 
-        self.display.draw_block(0, line * font['line_height'], self.DISPLAY_WIDTH, font['line_height'], background)
+        except Exception as e:
+            if self.DEBUG:
+                print('Error al dibujar el bloque de información en el footer: ' + str(e))
+        finally:
+            self.locked = False
 
         self.printByPos(line, start_x, center_content, len(center_content), color, background)
 
@@ -346,6 +390,12 @@ class DisplayST7735_128x160():
         """
         sensorsQuantity: integer, cantidad de sensores para la tabla
         """
+
+        while self.locked:
+            if self.DEBUG:
+                print('Esperando a que se desbloquee la pantalla en tableCreate()')
+
+            sleep_ms(10)
 
         if sensorsQuantity:
             self.sensors_quantity = sensorsQuantity

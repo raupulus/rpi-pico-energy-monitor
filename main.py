@@ -15,7 +15,7 @@ import env
 # Habilito recolector de basura
 gc.enable()
 
-TIME_TO_UPLOAD = 10  # Cada cuantos segundos se suben los datos a la api
+TIME_TO_UPLOAD = 30  # Cada cuantos segundos se suben los datos a la api
 TIME_TO_SHOW_DATA = 5  # Cada cuantos segundos se muestran los datos en la pantalla
 
 # Rpi Pico Model
@@ -119,7 +119,8 @@ def thread0():
             SENSOR_VOLTAGE.readSensor()
 
         # Almaceno si se ha pasado el tiempo para subir los datos a la api
-        need_upload = True if time() - last_upload_at >= TIME_TO_UPLOAD and env.UPLOAD_API else False
+        duration = time() - last_upload_at
+        need_upload = True if duration >= TIME_TO_UPLOAD and env.UPLOAD_API else False
 
         # Almaceno si se ha pasado el tiempo para mostrar los datos por pantalla
         need_show_display = time() - last_show_display_at >= TIME_TO_SHOW_DATA
@@ -181,6 +182,7 @@ def thread0():
             # Levanta un hilo independiente para mostrar los datos en la pantalla y subirlos a la api
             if not thread_lock_acquired and read_data:
                 thread_lock_acquired = True
+
                 _thread.start_new_thread(thread1, (read_data.get('intensity'), controller.wifiStatus(), read_data['voltage_current']))
 
             #if (read_data and len(read_data)):
@@ -190,15 +192,19 @@ def thread0():
             controller.locked = True
 
             # Recorre todos los datos y los muestra por consola
-            for key in read_data:
-                print(key, read_data[key])
-                print()
+            if env.DEBUG:
+                for key in read_data:
+                    print(key, read_data[key])
+                    print()
 
             try:
                 if controller.wifiIsConnected() == False:
                     controller.wifiConnect()
 
                 controller.ledOn()
+
+                read_data['hardware_device'] = env.DEVICE_ID
+                read_data['duration'] = duration
 
                 api.upload(read_data)
             except Exception as e:
@@ -227,10 +233,13 @@ def thread1(sensors, wifi_status, voltage):
         display.displayHeadInfo(wifi_status, voltage)
 
         for sensor in sensors:
-            current = round(float(sensor['current']), 2) if sensor['current'] > 0 and sensor['current'] < 10 else round(float(sensor['current']), 1)
-            avg = round(float(sensor['avg']), 2) if sensor['avg'] > 0 and sensor['avg'] < 10 else round(float(sensor['avg']), 1)
-            min = round(float(sensor['min']), 2) if sensor['min'] > 0 and sensor['min'] < 10 else round(float(sensor['min']), 1)
-            max = round(float(sensor['max']), 2) if sensor['max'] > 0 and sensor['max'] < 10 else round(float(sensor['max']), 1)
+
+            ## TODO: Extraer a función para redondear los valores
+
+            current = round(sensor['current'], 2) if sensor['current'] > 0 and sensor['current'] < 10 else round(sensor['current'], 1)
+            avg = round(sensor['avg'], 2) if sensor['avg'] > 0 and sensor['avg'] < 10 else round(sensor['avg'], 1)
+            min = round(sensor['min'], 2) if sensor['min'] > 0 and sensor['min'] < 10 else round(sensor['min'], 1)
+            max = round(sensor['max'], 2) if sensor['max'] > 0 and sensor['max'] < 10 else round(sensor['max'], 1)
 
             display.tableAddValue(sensor['pos'], current, avg, min, max)
 
@@ -248,7 +257,6 @@ def thread1(sensors, wifi_status, voltage):
             print('Hilo 2 finalizado')
 
         thread_lock_acquired = False
-
         thread_lock.release()
 
 while True:
