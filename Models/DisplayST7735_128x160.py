@@ -127,9 +127,14 @@ class DisplayST7735_128x160():
         while self.locked:
             sleep_ms(10)
 
+        self.locked = True
+
         self.display.reset()
         self.display.begin()
         self.display.set_rotation(self.DISPLAY_ORIENTATION)
+
+        self.locked = False
+
         self.cleanDisplay()
 
     def cleanDisplay(self):
@@ -183,7 +188,7 @@ class DisplayST7735_128x160():
             try:
                 #self.reset()
                 # TODO: Encender backlight de la pantalla
-                self.cleanDisplay()
+                self.reset()
                 self.display_on = True
                 self.display_on_at = time()
 

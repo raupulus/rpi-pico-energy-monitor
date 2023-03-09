@@ -16,7 +16,7 @@ import env
 gc.enable()
 
 TIME_TO_UPLOAD = 30  # Cada cuantos segundos se suben los datos a la api
-TIME_TO_SHOW_DATA = 5  # Cada cuantos segundos se muestran los datos en la pantalla
+TIME_TO_SHOW_DATA = 6  # Cada cuantos segundos se muestran los datos en la pantalla
 
 # Rpi Pico Model
 if env.UPLOAD_API and env.AP_NAME and env.AP_PASS:
@@ -172,22 +172,7 @@ def thread0():
                 'intensity': intensity,
             }
 
-        # Compruebo si ha pasado el tiempo para mostrar datos por pantalla
-        if need_show_display and display and display.display_on:
-            last_show_display_at = time()
-
-            global thread_lock
-            global thread_lock_acquired
-
-            # Levanta un hilo independiente para mostrar los datos en la pantalla y subirlos a la api
-            if not thread_lock_acquired and read_data:
-                thread_lock_acquired = True
-
-                _thread.start_new_thread(thread1, (read_data.get('intensity'), controller.wifiStatus(), read_data['voltage_current']))
-
-            #if (read_data and len(read_data)):
-            #    thread1(read_data.get('intensity'), controller.wifiStatus(), read_data['voltage_current'])
-
+        # Compruebo si ha pasado el tiempo para subir datos a la api, se hace antes del envío de datos a la pantalla para que no se quede bloqueado si se consume mucha memoria.
         if need_upload and read_data and len(read_data):
             controller.locked = True
 
@@ -206,6 +191,7 @@ def thread0():
                 read_data['hardware_device'] = env.DEVICE_ID
                 read_data['duration'] = duration
 
+                gc.collect()
                 api.upload(read_data)
             except Exception as e:
                 if env.DEBUG:
@@ -216,6 +202,18 @@ def thread0():
                 last_upload_at = time()
                 controller.locked = False
                 controller.ledOff()
+        # Compruebo si ha pasado el tiempo para mostrar datos por pantalla
+        if need_show_display and display and display.display_on:
+            last_show_display_at = time()
+
+            global thread_lock
+            global thread_lock_acquired
+
+            # Levanta un hilo independiente para mostrar los datos en la pantalla y subirlos a la api
+            if not thread_lock_acquired and read_data:
+                thread_lock_acquired = True
+
+                _thread.start_new_thread(thread1, (read_data.get('intensity'), controller.wifiStatus(), read_data['voltage_current']))
 
 
 def thread1(sensors, wifi_status, voltage):

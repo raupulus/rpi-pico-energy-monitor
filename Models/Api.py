@@ -2,7 +2,7 @@
 # -*- coding: utf-8 -*-
 #
 import urequests, gc
-import json
+import ujson
 from time import sleep
 
 gc.enable()
@@ -38,7 +38,8 @@ class Api():
             response = urequests.post(
                 full_url,
                 headers=headers,
-                data=json.dumps(datas)
+                json=ujson.dumps(datas),
+                timeout=3
             )
 
         except Exception as e:
