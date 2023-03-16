@@ -107,3 +107,27 @@ Sensibilidad:
 | ---- | --- | ------- |
 | SDA  | 4   | I2C     |
 | SDC  | 5   | I2C     |
+
+### ADS1115 4 channel ADC (Conversor Analógico Digital mediante i2c con 4 canales)
+
+| Name | Pin | Details |
+| ---- | --- | ------- |
+| SDA  | 4   | I2C     |
+| SDC  | 5   | I2C     |
+
+Para el uso de este conversor, estamos utilizando la librería de Robert-hh en su repositorio: [https://github.com/robert-hh/ads1x15](https://github.com/robert-hh/ads1x15)
+
+Se encuentra en el proyecto dentro en Library/Ads1x15.py.
+
+## MAX471 sensor
+
+Voltaje máximo (Vin): 25V DC (Vref=5V)
+Voltaje máximo (Vin): 16.5V DC (Vref=3.3V)
+Corriente máxima: 3A
+
+RS- Pin which is the negative side of the sensing resistor
+GND Pin
+SIGN Pin the sign pin will actually tell which way the current is flowing. In battery-powered operation, it actually gives us an indication of discharge and charging feature.
+OUT Pin this is the voltage output pin, so we will get a voltage output of one volt per amp and we can feed that into an analog to digital converter on our Arduino Uno or Arduino Nano and we could actually calculate the current through a load. So it is very simple, the voltage out is actually the current through the load.
+GND pin is the same as the other ground pin and finally
+RS+ Pin which is the positive side of the sensing resistor.

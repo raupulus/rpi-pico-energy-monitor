@@ -1,49 +1,85 @@
 from machine import ADC
 
-
 class Sensor_Voltage():
+    reads = 0 # Cantidad de lecturas realizadas desde el último reset
     max = 0
     min = 0
     avg = 0
     current = 0
 
-    def __init__(self, adc_pin=28, min_voltage=0.5, voltage_working=3.3, adc_voltage_correction=0.706):
+    locked = False # Indica si está bloqueado para no realizar lecturas
+
+    def __init__(self, adc_pin=28, min_voltage=0.5, voltage_working=3.3, adc_voltage_correction=0.706, debug=False):
         self.SENSOR = ADC(adc_pin)
         self.adc_pin = adc_pin
         self.min_voltage = min_voltage
         self.voltage_working = voltage_working
         self.adc_voltage_correction = adc_voltage_correction
+        self.DEBUG = debug
 
         # 16bits factor de conversión, aunque la lectura real en raspberry pi pico es de 12bits.
-        self.adc_conversion_factor = adc_conversion_factor = voltage_working / 65535
+        self.adc_conversion_factor = voltage_working / 65535
 
         self.resetStats()
 
-    def resetStats(self):
+    def resetStats(self, current=None):
         """Reset Statistics"""
-        voltage = self.getVoltage()
+
+        if self.locked:
+            voltage = self.avg
+        else:
+            voltage = current if current else self.getVoltage()
+
         self.max = voltage
         self.min = voltage
         self.avg = voltage
         self.current = voltage
+        self.reads = 0
 
-    def readVoltage(self):
+    def readSensor(self):
         """ Read sensor and return voltage"""
 
-        # Lectura del ADC a 16 bits (12bits en raspberry pi pico, traducido a 16bits)
-        reading = self.SENSOR.read_u16()
+        if self.locked:
+            return self.current
 
-        readingParse = ((reading - self.adc_voltage_correction)
-                        * self.adc_conversion_factor)
+        self.locked = True
 
-        voltage = 5 * readingParse
+        try:
+            # Lectura del ADC a 16 bits (12bits en raspberry pi pico, traducido a 16bits)
+            reading = self.SENSOR.read_u16()
 
-        if readingParse < self.min_voltage:
-            return 0.00
+            readingParse = ((reading - self.adc_voltage_correction)
+                            * self.adc_conversion_factor)
 
-        return round(float(voltage), 2)
+            value = 5 * readingParse
 
-    def getVoltage(self, samples=50):
+            if readingParse < self.min_voltage:
+                return 0.00
+
+
+            voltage = float(value)
+            self.current = voltage
+
+            # Estadísticas
+            if voltage > self.max:
+                self.max_voltage = voltage
+            if voltage < self.min:
+                self.min = voltage
+
+            self.reads += 1
+
+            self.avg = float((self.avg + voltage) / 2)
+        except Exception as e:
+            if self.DEBUG:
+                print('Error al leer sensor de voltaje', e)
+
+            return self.avg
+        finally:
+            self.locked = False
+
+        return value
+
+    def getVoltage(self, samples=1):
         """
         Read sensor and return voltage
         @param samples: Number of samples to read
@@ -52,29 +88,19 @@ class Sensor_Voltage():
         sum = 0
 
         for read in range(samples):
-            voltage = self.readVoltage()
-
-            self.current = round(voltage, 2)
+            voltage = self.readSensor()
 
             sum += voltage
 
-            # Estadísticas
-            if voltage > self.max:
-                self.max_voltage = voltage
-            if voltage < self.min:
-                self.min = voltage
-            self.avg = round(float((self.avg + voltage) / 2), 2)
+        return float(sum/samples)
 
-        return round(float(sum/samples), 2)
-
-    def getStats(self, samples=50):
+    def getStats(self):
         """ Get Statistics formated as a dictionary"""
 
-        self.getVoltage(samples)
-
         return {
-            'max': round(float(self.max), 2),
-            'min': round(float(self.min), 2),
-            'avg': round(float(self.avg), 2),
-            'current': round(float(self.current), 2)
+            'max': float(self.max),
+            'min': float(self.min),
+            'avg': float(self.avg),
+            'current': float(self.current),
+            'reads': self.reads
         }

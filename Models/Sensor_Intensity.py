@@ -1,60 +1,85 @@
-from machine import ADC
-
+from Models.Sensors.ACS712 import ACS712
+from Models.Sensors.Max471 import Max471
+import time
 
 class Sensor_Intensity():
-    max = 0
+    reads = 0 # Cantidad de lecturas realizadas desde el último reset
     min = 0
+    max = 0
     avg = 0
     current = 0
 
-    # Diferencia máxima al estar desconectado 65535/2, para debug
-    debug_max_voltage_on_disconnect = 0
+    locked = False # Indica si está bloqueado para no realizar lecturas
 
-    def __init__(self, adc_pin=26, sensibility=0.1, min_amperes=0.15, voltage_working=3.3, ):
+    def __init__(self, controller, sensor_type, adc_pin=26, sensibility=0.1, min_amperes=0.15):
         """
+        @param controller: Fuente (Wrapper) de donde se accede al sensor (Controlador o interfaz)
         @param adc_pin: ADC pin
         @param sensibility: Sensibility of the sensor (5A = 0.185mv/A, 20A = 100mv/A, 30A = 66mv/A)
         @param min_amperes: Minimum amperes to detect
         @param voltage_working: Working voltage of the sensor
         """
-        self.SENSOR = ADC(adc_pin)
-        self.adc_pin = adc_pin
-        self.voltage_working = voltage_working
-        self.min_amperes = min_amperes
-        self.sensibility = sensibility
+        self.controller = controller
 
-        # 16bits factor de conversión, aunque la lectura real en raspberry pi pico es de 12bits.
-        self.adc_conversion_factor = adc_conversion_factor = voltage_working / 65535
+        if sensor_type.upper() == 'ACS712':
+            self.SENSOR = ACS712(adc_pin, sensibility,
+                                 min_amperes, controller.voltage_working)
+        elif sensor_type.upper() == 'MAX471':
+            self.SENSOR = Max471(adc_pin)
 
         self.resetStats()
 
-    def resetStats(self):
+    def resetStats(self, current=None):
         """Reset Statistics"""
-        intensity = self.getIntensity()
+        time.sleep_ms(100)
+
+        if self.locked:
+            intensity = self.current
+        else:
+            intensity = current if current else self.getIntensity()
         self.max = intensity
         self.min = intensity
         self.avg = intensity
         self.current = intensity
+        self.reads = 0
 
     def readSensor(self):
         """ Read sensor and return amperes"""
 
-        # Lectura del ADC a 16 bits (12bits en raspberry pi pico, traducido a 16bits)
-        reading = self.SENSOR.read_u16()
+        if self.locked:
+            return self.current
 
-        if (reading - (65535/2)) > self.debug_max_voltage_on_disconnect:
-            self.debug_max_voltage_on_disconnect = (reading - (65535/2))
+        ready = False
 
-        readingParse = (reading / 65535) * self.voltage_working
+        while not ready:
+            try:
+                read = self.controller.readAnalogInput(self.SENSOR.adc_pin)
 
-        calc = (readingParse - (self.voltage_working/2))
+                value = self.SENSOR.readAnalogInput(read)
+                ready = True
+            except Exception as e:
+                print('Error de lectura, reintentando...', e)
+                time.sleep_ms(20)
+        read = self.controller.readAnalogInput(self.SENSOR.adc_pin)
 
-        amperes = calc / self.sensibility
+        value = self.SENSOR.readAnalogInput(read)
 
-        if amperes <= self.min_amperes:
-            return 0.00
+        amperes = float(value)
 
-        return round(float(amperes), 2)
+        self.current = amperes
+
+        # Estadísticas
+        if amperes > self.max:
+            self.max = amperes
+        if amperes < self.min:
+            self.min = amperes
+
+
+        self.reads += 1
+
+        self.avg = float((self.avg + amperes) / 2)
+
+        return amperes
 
     def getIntensity(self, samples=50):
         """
@@ -67,27 +92,17 @@ class Sensor_Intensity():
         for read in range(samples):
             intensity = self.readSensor()
 
-            self.current = intensity
-
             sum += intensity
 
-            # Estadísticas
-            if intensity > self.max:
-                self.max = intensity
-            if intensity < self.min:
-                self.min = intensity
-            self.avg = round(float((self.avg + intensity) / 2), 2)
-
-        return round(float(sum/samples), 2)
+        return float(sum/samples)
 
     def getStats(self, samples=50):
         """ Get Statistics formated as a dictionary"""
 
-        self.getIntensity(samples)
-
         return {
-            'max': round(float(self.max), 2),
-            'min': round(float(self.min), 2),
-            'avg': round(float(self.avg), 2),
-            'current': round(float(self.current), 2)
+            'max': float(self.max),
+            'min': float(self.min),
+            'avg': float(self.avg),
+            'current': float(self.current),
+            'reads': self.reads
         }
