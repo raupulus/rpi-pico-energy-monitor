@@ -1,6 +1,8 @@
 # Raspberry Pi Pico - Energy Monitor
 
-Repository [https://gitlab.com/fryntiz/rpi-pico-energy-monitor](https://gitlab.com/fryntiz/rpi-pico-energy-monitor)
+Repository [https://gitlab.com/raupulus/rpi-pico-energy-monitor](https://gitlab.com/raupulus/rpi-pico-energy-monitor)
+
+Sitio web del autor: [https://raupulus.dev](https://raupulus.dev)
 
 ## Description
 
@@ -22,11 +24,11 @@ Copy all files in raspberry pi pico, for example with thonny software.
 
 ## Contributing
 
-Envía PR o contacta conmigo en Gitlab: [https://gitlab.com/fryntiz/rpi-pico-energy-monitor](https://gitlab.com/fryntiz/rpi-pico-energy-monitor)
+Envía PR o contacta conmigo en Gitlab: [https://gitlab.com/raupulus/rpi-pico-energy-monitor](https://gitlab.com/fryntiz/rpi-pico-energy-monitor)
 
 ---
 
-Send PR or contact with me on Gitlab: [https://gitlab.com/fryntiz/rpi-pico-energy-monitor](https://gitlab.com/fryntiz/rpi-pico-energy-monitor)
+Send PR or contact with me on Gitlab: [https://gitlab.com/raupulus/rpi-pico-energy-monitor](https://gitlab.com/fryntiz/rpi-pico-energy-monitor)
 
 ## Authors and acknowledgment
 
